@@ -8,7 +8,13 @@ dst-env/
 .cache/v/cache/lastfailed
 tests/.cache/v/cache/lastfailed
 .vscode/settings.json
-*.ipynb
+*.wandb
+wandb/
+*.npy
+*.csv
+*.json
+*.pt
+
 
 ##
 ## R Section - See https://github.com/github/gitignore/blob/master/R.gitignore
