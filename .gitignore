@@ -1,6 +1,8 @@
 ## The .gitignore file specifies things that git should ignore. 
 ## This default template includes entries for R, Python and visual studio
 
+personal/
+
 ##
 ## Add custom entries below here.
 ##
@@ -14,7 +16,6 @@ wandb/
 *.csv
 *.json
 *.pt
-ㅁㄴㅇㄹ
 
 ##
 ## R Section - See https://github.com/github/gitignore/blob/master/R.gitignore
