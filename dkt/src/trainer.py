@@ -153,6 +153,7 @@ def inference(args, test_data, model):
 
         # predictions
         preds = preds[:, -1]
+        preds = torch.nn.Sigmoid()(preds)
         preds = preds.cpu().detach().numpy()
         total_preds += list(preds)
 
@@ -175,6 +176,8 @@ def get_model(args):
         model = LSTMATTN(args)
     if args.model == "bert":
         model = Bert(args)
+
+    model.to(args.device)
 
     return model
 
