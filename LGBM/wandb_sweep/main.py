@@ -16,6 +16,9 @@ def main(args):
     ## wandb setting
     wandb.login()
     wandb.init()
+    wandb.run.name = f"LGBM_LR_{args.learning_rate}_num_leaves_{args.num_leaves}_feature_fraction_{args.feature_fraction}_bagging_fraction_{args.bagging_fraction}_bagging_freq_{args.bagging_freq}"
+    wandb.run.save()
+    wandb.config.update(args)
 
     ## 1. 데이터 로딩
     data_dir = '/opt/ml/input/data' # 경로
@@ -83,7 +86,7 @@ def main(args):
             ]
 
     # 사용 피처
-    using_feature = base_feats
+    using_feature = FEATS
 
     lgb_train = lgb.Dataset(train[using_feature], y_train)
     lgb_test = lgb.Dataset(test[using_feature], y_test)
@@ -93,8 +96,8 @@ def main(args):
         lgb_train,
         valid_sets=[lgb_test],
         verbose_eval=-1,
-        num_boost_round=100,
-        early_stopping_rounds=200,
+        num_boost_round=10000,
+        early_stopping_rounds=100,
     )
 
     preds = model.predict(test[using_feature])
@@ -103,6 +106,7 @@ def main(args):
     metric={
         "Valid/AUC": auc,
         "Valid/ACC": acc,
+        "best_iters":model.best_iteration,
     }
     wandb.log(metric)
     print(f'VALID AUC : {auc} ACC : {acc}\n')

@@ -1,6 +1,6 @@
 program: main.py
 method: bayes
-name: LGBM_Sweep
+name: LGBM add 9 Feature version
 project: Boosting
 entity: recsys8
 metric:
