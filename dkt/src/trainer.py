@@ -177,6 +177,8 @@ def get_model(args):
     if args.model == "bert":
         model = Bert(args)
 
+    model.to(args.device)
+
     return model
 
 
