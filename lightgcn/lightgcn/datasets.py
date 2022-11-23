@@ -21,11 +21,11 @@ def prepare_dataset(device, basepath, verbose=True, logger=None):
 def load_data(basepath):
     path1 = os.path.join(basepath, "train_data.csv")
     path2 = os.path.join(basepath, "test_data.csv")
-    data1 = pd.read_csv(path1)
-    data2 = pd.read_csv(path2)
+    data1 = pd.read_csv(path1) #(2266586, 6)
+    data2 = pd.read_csv(path2) #(260114, 6)
 
-    data = pd.concat([data1, data2])
-    data.drop_duplicates(
+    data = pd.concat([data1, data2]) #(2526700, 6)
+    data.drop_duplicates(            #(2476706, 6)
         subset=["userID", "assessmentItemID"], keep="last", inplace=True
     )
 
@@ -60,8 +60,8 @@ def process_data(data, id_2_index, device):
         edge.append([uid, iid])
         label.append(acode)
 
-    edge = torch.LongTensor(edge).T
-    label = torch.LongTensor(label)
+    edge = torch.LongTensor(edge).T  #train_data일 때 : len(shape) = (2475962,2) -> (2, 2475962)
+    label = torch.LongTensor(label)  #train_data일 때 : len = 2475962
 
     return dict(edge=edge.to(device), label=label.to(device))
 

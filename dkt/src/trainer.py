@@ -96,7 +96,7 @@ def train(train_loader, model, optimizer, scheduler, args):
         preds = preds[:, -1]
         targets = targets[:, -1]
 
-        total_preds.append(preds.detach())
+        total_preds.append(preds.detach()) #detach는 clone()같은 복사방법중 한방법. 기존 tensor에서 gradient 전파가 안되는 텐서 생성이라 한다.
         total_targets.append(targets.detach())
         losses.append(loss)
 

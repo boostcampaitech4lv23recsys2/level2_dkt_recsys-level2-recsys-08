@@ -30,7 +30,7 @@ class LSTM(nn.Module):
         self.comb_proj = nn.Linear((self.hidden_dim // 3) * 4, self.hidden_dim) # 원하는 차원으로 줄이기
 
         self.lstm = nn.LSTM(
-            self.hidden_dim, self.hidden_dim, self.n_layers, batch_first=True
+            self.hidden_dim, self.hidden_dim, self.n_layers, batch_first=True #nn.LSTM(input_size, hidden_size, num_layers, ...)
         )
 
         # Fully connected layer
@@ -38,12 +38,12 @@ class LSTM(nn.Module):
 
     def forward(self, input):
 
-        test, question, tag, _, mask, interaction = input
+        test, question, tag, _, mask, interaction = input #(test, question, tag, correct, mask, interaction)
 
         batch_size = interaction.size(0)
 
         # Embedding
-        embed_interaction = self.embedding_interaction(interaction)
+        embed_interaction = self.embedding_interaction(interaction) #interaction의 값은 0/1/2 중 하나이다.
         embed_test = self.embedding_test(test)
         embed_question = self.embedding_question(question)
         embed_tag = self.embedding_tag(tag)
@@ -60,7 +60,7 @@ class LSTM(nn.Module):
 
         X = self.comb_proj(embed)
 
-        out, _ = self.lstm(X)
+        out, _ = self.lstm(X) #hidden, cell state 반환
         out = out.contiguous().view(batch_size, -1, self.hidden_dim)
         out = self.fc(out).view(batch_size, -1)
         return out
