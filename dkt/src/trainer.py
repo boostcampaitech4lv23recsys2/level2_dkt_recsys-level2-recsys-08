@@ -47,7 +47,7 @@ def run(args, train_data, valid_data, model):
                 "train_acc_epoch": train_acc,
                 "valid_auc_epoch": auc,
                 "valid_acc_epoch": acc,
-            }
+            },step = epoch
         )
         if auc > best_auc:
             best_auc = auc
@@ -69,7 +69,7 @@ def run(args, train_data, valid_data, model):
                     f"EarlyStopping counter: {early_stopping_counter} out of {args.patience}"
                 )
                 break
-
+        wandb.run.summary['best_auc'] = best_auc
         # scheduler
         if args.scheduler == "plateau":
             scheduler.step(best_auc)
@@ -153,6 +153,7 @@ def inference(args, test_data, model):
 
         # predictions
         preds = preds[:, -1]
+        preds = torch.nn.Sigmoid()(preds)
         preds = preds.cpu().detach().numpy()
         total_preds += list(preds)
 
@@ -175,6 +176,8 @@ def get_model(args):
         model = LSTMATTN(args)
     if args.model == "bert":
         model = Bert(args)
+
+    model.to(args.device)
 
     return model
 

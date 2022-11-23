@@ -1,0 +1,70 @@
+program : train.py
+entity : recsys8
+project : Sequential
+# 고정
+
+method : grid # grid,random,bayes
+name : Sequential_sweep # 자유롭게 바꾸셔도 됩니다.
+
+metric :
+  name : best_auc
+  goal : maximize
+
+parameters :
+# 학습 파라미터
+  model :
+    value : "lstm" # ['lstm', 'lstmattn', 'bert']
+  
+  optimizer :
+    value : "adam"
+
+  scheduler :
+    value : "plateau"
+# 모델 내 파라미터
+  hidden_dim :
+    value : 64
+    # values : []
+
+  n_layers :
+    value : 2
+    # values : []
+
+  n_heads :
+    value : 2
+    # values : []
+
+  drop_out :
+    value : 0.2
+    # values : []
+# 훈련 파라미터
+  max_seq_len :
+    value : 20
+    # values : []
+
+  num_workers :
+    value : 1
+    # values : []
+
+  n_epochs :
+    value : 10
+    # values : []
+  
+  batch_size :
+    value : 64
+    # values : []
+  
+  lr :
+    value : 0.0001
+    # values : []
+  
+  clip_grad :
+    value : 10
+    # values : []
+  
+  patience : 
+     value : 5
+    #  values : []
+
+  log_steps :
+    value : 50
+    # values : []
