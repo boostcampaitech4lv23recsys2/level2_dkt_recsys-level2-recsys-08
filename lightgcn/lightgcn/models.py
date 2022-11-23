@@ -79,6 +79,10 @@ def train(
                     {"model": model.state_dict(), "epoch": e + 1},
                     os.path.join(weight, f"best_model.pt"),
                 )
+
+            if use_wandb:
+                wandb.run.summary['best_auc'] = best_auc
+                
     torch.save(
         {"model": model.state_dict(), "epoch": e + 1},
         os.path.join(weight, f"last_model.pt"),

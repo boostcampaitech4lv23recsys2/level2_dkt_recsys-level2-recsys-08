@@ -9,6 +9,8 @@ if CFG.user_wandb:
     import wandb
 
     wandb.init(**CFG.wandb_kwargs, config=class2dict(CFG))
+    # wandb.run.name = f"{args.model}_juj" # 표시되는 이름을 바꾸고 싶다면 해당 줄을 바꿔주세요
+    # wandb.run.save()
 
 
 logger = get_logger(logging_conf)
