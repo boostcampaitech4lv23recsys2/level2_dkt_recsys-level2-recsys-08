@@ -25,7 +25,7 @@ def main(args):
         result = en.mixed()
     else:
         pass
-    en.output_frame['rating'] = result
+    en.output_frame['prediction'] = result
     output = en.output_frame.copy()
     files_title = '-'.join(file_list)
 
