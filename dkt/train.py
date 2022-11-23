@@ -21,9 +21,12 @@ def main(args):
     train_data, valid_data = preprocess.split_data(train_data)
 
     wandb.init(project="dkt", config=vars(args))
+    wandb.run.name = "sweep_lr_{0}_drop_{1}".format(str(args.lr),str(args.drop_out))
+    wandb.run.save()
+    wandb.config.update(args)
     model = trainer.get_model(args).to(args.device)
+    wandb.watch(model)
     trainer.run(args, train_data, valid_data, model)
-
 
 if __name__ == "__main__":
     args = parse_args()
