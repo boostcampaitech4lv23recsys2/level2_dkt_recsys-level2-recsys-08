@@ -18,7 +18,7 @@ def main(args):
     wandb.init()
     wandb.run.name = f"LGBM_LR_{args.learning_rate}_num_leaves_{args.num_leaves}_feature_fraction_{args.feature_fraction}_bagging_fraction_{args.bagging_fraction}_bagging_freq_{args.bagging_freq}"
     wandb.run.save()
-    wandb.config.update(args)
+    # wandb.config.update(args)
 
     ## 1. 데이터 로딩
     data_dir = '/opt/ml/input/data' # 경로
@@ -59,7 +59,7 @@ def main(args):
     ## 4. train
     # 파라미터 설정
     params = {
-        # "max_depth": args.max_depth, # default = -1 (= no limit)
+        # "max_depth": args.max_depth, # default=-1 (no limit)
         "learning_rate": args.learning_rate,  # default = 0.1, [0.0005 ~ 0.5]
         "boosting": "gbdt",
         "objective": args.objective,
