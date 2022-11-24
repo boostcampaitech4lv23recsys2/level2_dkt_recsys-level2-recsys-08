@@ -44,7 +44,7 @@ class LSTM(nn.Module):
 
         # Embedding
         embed_interaction = self.embedding_interaction(interaction) #interaction의 값은 0/1/2 중 하나이다.
-        embed_test = self.embedding_test(test)
+        embed_test = self.embedding_test(test)                #shape = (64,20,21)
         embed_question = self.embedding_question(question)
         embed_tag = self.embedding_tag(tag)
 
@@ -56,13 +56,13 @@ class LSTM(nn.Module):
                 embed_tag,
             ],
             2,
-        )
+        ) #shape = (64,20,84)
 
-        X = self.comb_proj(embed)
+        X = self.comb_proj(embed) #(64,20,64)
 
-        out, _ = self.lstm(X) #hidden, cell state 반환
+        out, _ = self.lstm(X) #hidden, cell state 반환                 #out.shape = (64,20,64)
         out = out.contiguous().view(batch_size, -1, self.hidden_dim)
-        out = self.fc(out).view(batch_size, -1)
+        out = self.fc(out).view(batch_size, -1)                       #out.shape = (64,20)
         return out
 
 
