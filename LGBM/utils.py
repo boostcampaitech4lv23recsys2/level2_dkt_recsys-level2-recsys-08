@@ -1,6 +1,11 @@
 import random
 import pandas as pd
 import os
+from dotenv import load_dotenv
+import subprocess as sp
+
+load_dotenv('../.env')
+breakpoint()
 
 random.seed(42)
 def custom_train_test_split(df, ratio=0.7, split=True):
@@ -55,3 +60,11 @@ def lgbm_predict(test_df, model, FEATS, submission):
         w.write("id,prediction\n")
         for id, p in enumerate(total_preds):
             w.write('{},{}\n'.format(id,p))
+
+
+def post_slack(message):
+    API=os.environ['API']
+    NAME='cwj'
+    message=f'curl -s -d "payload={{\\"username\\":\\"{NAME}\\", \\"text\\":\\"\`\`\`{message}\`\`\`\\"}}" "{API}"'
+    # post message
+    sp.getstatusoutput(message)
