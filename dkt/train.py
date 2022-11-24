@@ -18,7 +18,7 @@ def main(args):
                                               #shape의 6698은 train.csv의 유저 수
                                               #shape 중간의 4는 ["testID","assessmentItemID","knowledgeTag","answerCode"]                          
     # user수만큼 🌕🌕🌕
-    train_data = preprocess.get_partial_data(train_data, 640)
+    # train_data = preprocess.get_partial_data(train_data, 640)
     train_data, valid_data = preprocess.split_data(train_data)
     wandb.init(project="Sequential", entity = "recsys8", config=vars(args))
     wandb.run.name = f"{args.model}_juj" # 표시되는 이름을 바꾸고 싶다면 해당 줄을 바꿔주세요
