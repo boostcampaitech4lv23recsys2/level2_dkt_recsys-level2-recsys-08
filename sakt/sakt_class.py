@@ -199,3 +199,40 @@ def valid_epoch(model, dataloader, criterion, device="cuda"):
     loss = np.mean(valid_loss)
 
     return loss, acc, auc
+
+def get_output(model, dataloader, criterion, device="cuda"):
+    model.eval()
+
+    valid_loss = []
+    num_corrects = 0
+    num_total = 0
+    labels = []
+    outs = []
+
+    for item in dataloader:
+        x = item[0].to(device).long()
+        target_id = item[1].to(device).long()
+        label = item[2].to(device).float()
+        target_mask = (target_id != 0)
+
+        output, _, = model(x, target_id)
+        loss = criterion(output, label)
+        valid_loss.append(loss.item())
+
+        output = torch.masked_select(output, target_mask)
+        label = torch.masked_select(label, target_mask)
+        pred = (torch.sigmoid(output) >= 0.5).long()
+        
+        num_corrects += (pred == label).sum().item()
+        num_total += len(label)
+
+        labels.extend(label.view(-1).data.cpu().numpy())
+        outs.extend(output.view(-1).data.cpu().numpy())
+
+    # acc = num_corrects / num_total
+    # auc = roc_auc_score(labels, outs)
+    # loss = np.mean(valid_loss)
+
+    # return loss, acc, auc
+
+    return labels, outs
