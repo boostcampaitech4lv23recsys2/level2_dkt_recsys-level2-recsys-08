@@ -36,6 +36,12 @@ class Preprocess:
 
         return data_1, data_2
 
+    def get_partial_data(self, data, user_cnt = 640):
+        """user_cnt만큼 data의 유저를 앞에서부터 자르는 함수"""
+        data = data[:user_cnt]
+
+        return data
+
     def __save_labels(self, encoder, name):
         le_path = os.path.join(self.args.asset_dir, name + "_classes.npy")
         np.save(le_path, encoder.classes_)
