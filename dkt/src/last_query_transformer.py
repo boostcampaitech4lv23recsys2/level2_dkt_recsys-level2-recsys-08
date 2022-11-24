@@ -43,22 +43,24 @@ class last_query_model(nn.Module):
 
         self.out = nn.Linear(in_features= dim_model , out_features=1)
 
-    def forward(self, in_ex, in_cat, in_in, first_block=True):
+    # def forward(self, in_ex, in_cat, in_in, first_block=True):
+    def forward(self, data, first_block=True):
         first_block = True
         if first_block:
-            in_ex = self.embd_ex( in_ex )     #(64, 100) -> (64, 100, 128)
-            in_ex = nn.Dropout(0.1)(in_ex)
+            
+            # in_ex = self.embd_ex( in_ex )     #(64, 100) -> (64, 100, 128)
+            # in_ex = nn.Dropout(0.1)(in_ex)
 
-            in_cat = self.embd_cat( in_cat )
-            in_cat = nn.Dropout(0.1)(in_cat)
+            # in_cat = self.embd_cat( in_cat )
+            # in_cat = nn.Dropout(0.1)(in_cat)
 
-            #print("response embedding ", in_in.shape , '\n' , in_in[0])
-            in_in = self.embd_in(in_in)
-            in_in = nn.Dropout(0.1)(in_in)
+            # #print("response embedding ", in_in.shape , '\n' , in_in[0])
+            # in_in = self.embd_in(in_in)
+            # in_in = nn.Dropout(0.1)(in_in)
 
-            #in_pos = self.embd_pos( in_pos )
-            #combining the embedings
-            out = in_ex + in_cat + in_in #+ in_pos     # (b,n,d)
+            # #in_pos = self.embd_pos( in_pos )
+            # #combining the embedings
+            # out = in_ex + in_cat + in_in #+ in_pos     # (b,n,d)
 
         else:
             out = in_ex
