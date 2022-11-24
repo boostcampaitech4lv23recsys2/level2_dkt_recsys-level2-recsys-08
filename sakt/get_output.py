@@ -60,7 +60,11 @@ model = model_.cuda()
 model.load_state_dict(torch.load('/opt/ml/input/code/sakt/very_1st_sakt_model.pt'))
 
 lab, output = get_output(model, testing_dataloader, criterion_, device="cuda")
-print(len(lab))
-print(len(output))
 
-output_df = pd.DataFrame()
+output_df = pd.DataFrame(zip(lab,output),columns=['label','prediction'])
+pre_output = output_df.loc[output_df['label'] == -1]
+real_output = pre_output.drop(['label'], axis=1)
+real_output = real_output.reset_index(drop=True)
+# real_output.loc[real_output['prediction'] < 0,'prediction'] = 0 # 0보다 작은거 다 0 으로
+# real_output.loc[real_output['prediction'] > 1,'prediction'] = 1 # 0보다 작은거 다 0 으로
+real_output.to_csv('/opt/ml/input/code/sakt/sakt_output/sakt_output.csv')
