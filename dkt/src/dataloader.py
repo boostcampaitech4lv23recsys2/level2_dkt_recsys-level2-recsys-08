@@ -36,19 +36,14 @@ class Preprocess:
 
         return data_1, data_2
 
-    def get_partial_data(self, data, user_cnt = 640):
-        """user_cnt만큼 data의 유저를 앞에서부터 자르는 함수"""
-        data = data[:user_cnt]
-
-        return data
-
     def __save_labels(self, encoder, name):
         le_path = os.path.join(self.args.asset_dir, name + "_classes.npy")
         np.save(le_path, encoder.classes_)
 
-    def __preprocessing(self, df, is_train=True):
+    def __preprocessing(self, df, args, is_train=True):
         cate_cols = ["assessmentItemID", "testId", "KnowledgeTag"]
-
+        if args.partial_user: #640명에 대해서 자른다.
+            df = df[df['userID'] < 717]
         if not os.path.exists(self.args.asset_dir):
             os.makedirs(self.args.asset_dir)
 
@@ -87,11 +82,11 @@ class Preprocess:
         # TODO
         return df
 
-    def load_data_from_file(self, file_name, is_train=True):
-        csv_file_path = os.path.join(self.args.data_dir, file_name)
+    def load_data_from_file(self, args, is_train=True):
+        csv_file_path = os.path.join(self.args.data_dir, args.file_name)
         df = pd.read_csv(csv_file_path)  # , nrows=100000)
         df = self.__feature_engineering(df)
-        df = self.__preprocessing(df, is_train)
+        df = self.__preprocessing(df, args, is_train)
 
         # 추후 feature를 embedding할 시에 embedding_layer의 input 크기를 결정할때 사용
 
@@ -119,14 +114,13 @@ class Preprocess:
                 )
             )
         )
-
         return group.values
 
-    def load_train_data(self, file_name):
-        self.train_data = self.load_data_from_file(file_name)
+    def load_train_data(self, args):
+        self.train_data = self.load_data_from_file(args)
 
     def load_test_data(self, file_name):
-        self.test_data = self.load_data_from_file(file_name, is_train=False)
+        self.test_data = self.load_data_from_file(args, is_train=False)
 
 
 class DKTDataset(torch.utils.data.Dataset):
