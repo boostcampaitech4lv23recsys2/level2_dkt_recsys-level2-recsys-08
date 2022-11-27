@@ -28,9 +28,9 @@ class last_query_model(nn.Module):
     def __init__(self , dim_model, heads_en, total_ex ,total_cat, total_in,seq_len, use_lstm=True):
         super().__init__()
         self.seq_len = seq_len
-        self.embd_ex =   nn.Embedding( total_ex , embedding_dim = dim_model )       # embedings q,k,v = E = exercise ID embedding, category embedding, and positionembedding.
+        self.embd_ex =   nn.Embedding( total_ex , embedding_dim = dim_model )                   # embedings  q,k,v = E = exercise ID embedding, category embedding, and positionembedding.
         self.embd_cat =  nn.Embedding( total_cat, embedding_dim = dim_model )
-        self.embd_in   = nn.Embedding(  total_in , embedding_dim = dim_model )      # positional embedding
+        self.embd_in   = nn.Embedding(  total_in , embedding_dim = dim_model )                  #positional embedding
 
         self.multi_en = nn.MultiheadAttention( embed_dim= dim_model, num_heads= heads_en,dropout=0.1  )     # multihead attention    ## todo add dropout, LayerNORM
         self.ffn_en = Feed_Forward_block( dim_model )                                            # feedforward block     ## todo dropout, LayerNorm
@@ -43,24 +43,22 @@ class last_query_model(nn.Module):
 
         self.out = nn.Linear(in_features= dim_model , out_features=1)
 
-    # def forward(self, in_ex, in_cat, in_in, first_block=True):
-    def forward(self, data, first_block=True):
+    def forward(self, in_ex, in_cat, in_in, first_block=True):
         first_block = True
         if first_block:
-            
-            # in_ex = self.embd_ex( in_ex )     #(64, 100) -> (64, 100, 128)
-            # in_ex = nn.Dropout(0.1)(in_ex)
+            in_ex = self.embd_ex( in_ex )
+            in_ex = nn.Dropout(0.1)(in_ex)
 
-            # in_cat = self.embd_cat( in_cat )
-            # in_cat = nn.Dropout(0.1)(in_cat)
+            in_cat = self.embd_cat( in_cat )
+            in_cat = nn.Dropout(0.1)(in_cat)
 
-            # #print("response embedding ", in_in.shape , '\n' , in_in[0])
-            # in_in = self.embd_in(in_in)
-            # in_in = nn.Dropout(0.1)(in_in)
+            #print("response embedding ", in_in.shape , '\n' , in_in[0])
+            in_in = self.embd_in(in_in)
+            in_in = nn.Dropout(0.1)(in_in)
 
-            # #in_pos = self.embd_pos( in_pos )
-            # #combining the embedings
-            # out = in_ex + in_cat + in_in #+ in_pos     # (b,n,d)
+            #in_pos = self.embd_pos( in_pos )
+            #combining the embedings
+            out = in_ex + in_cat + in_in #+ in_pos                      # (b,n,d)
 
         else:
             out = in_ex
@@ -74,7 +72,7 @@ class last_query_model(nn.Module):
         #Multihead attention                            
         n,_,_ = out.shape
         out = self.layer_norm1( out )                           # Layer norm
-        skip_out = out
+        skip_out = out 
 
         out, attn_wt = self.multi_en( out[-1:,:,:] , out , out )         # Q,K,V
         #                        #attn_mask=get_mask(seq_len=n))  # attention mask upper triangular
@@ -95,7 +93,7 @@ class last_query_model(nn.Module):
 
         out = self.out( out )
 
-        return out.squeeze(-1), 0
+        return out.squeeze(-1)
 
 def get_clones(module, N):
     return nn.ModuleList([copy.deepcopy(module) for i in range(N)])
@@ -111,13 +109,11 @@ def get_pos(seq_len):
 
 
 def random_data(bs, seq_len , total_ex, total_cat, total_in = 2):
-    """bs : batch size"""
-    ex = torch.randint( 0 , total_ex ,(bs , seq_len) ) #0~total_ex-1 사이의 값, (bs, seq_len)의 shape를 가짐 (64, 100)
+    ex = torch.randint( 0 , total_ex ,(bs , seq_len) )
     cat = torch.randint( 0 , total_cat ,(bs , seq_len) )
     res = torch.randint( 0 , total_in ,(bs , seq_len) )
     return ex,cat, res
 
-# """
 seq_len = 100
 total_ex = 1200
 total_cat = 234
@@ -130,6 +126,6 @@ model = last_query_model(dim_model=128,
             seq_len=seq_len,
             total_in=2
             )
-outs = model(in_ex, in_cat,in_in) #in_ex, in_cat, in_in shape = (64, 100)
+outs = model(in_ex, in_cat,in_in)
 print('Output lstm shape- ',outs[0].shape)
-# """
+print(outs.shape)

@@ -10,6 +10,7 @@ from .metric import get_metric
 from .model import LSTM, LSTMATTN, Bert
 from .optimizer import get_optimizer
 from .scheduler import get_scheduler
+from .my_transformer import LQTransformer
 
 
 def run(args, train_data, valid_data, model):
@@ -82,9 +83,10 @@ def train(train_loader, model, optimizer, scheduler, args):
     total_targets = []
     losses = []
     for step, batch in enumerate(train_loader):
-        input = list(map(lambda t: t.to(args.device), process_batch(batch)))
-        preds = model(input)
-        targets = input[3]  # correct
+        input = list(map(lambda t: t.to(args.device), process_batch(batch))) #[6,64,20] 의 6 : [test, question, tag, correct, mask, interaction]
+        preds = model(input) #[64,20]
+        # targets = input[3]  # correct #[64,20]
+        targets = input[3][:,-1].unsqueeze(1)
 
         loss = compute_loss(preds, targets)
         update_params(loss, model, optimizer, scheduler, args)
@@ -176,6 +178,8 @@ def get_model(args):
         model = LSTMATTN(args)
     if args.model == "bert":
         model = Bert(args)
+    if args.model == "lqtransformer":
+        model = LQTransformer(args)
 
     model.to(args.device)
 
