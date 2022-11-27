@@ -8,9 +8,9 @@ from .criterion import get_criterion
 from .dataloader import get_loaders
 from .metric import get_metric
 from .model import LSTM, LSTMATTN, Bert
+from .lqtransformer import LQTransformer
 from .optimizer import get_optimizer
 from .scheduler import get_scheduler
-from .my_transformer import LQTransformer
 
 
 def run(args, train_data, valid_data, model):
