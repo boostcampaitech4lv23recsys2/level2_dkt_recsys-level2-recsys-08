@@ -4,7 +4,7 @@ import numpy as np
 import torch
 from sklearn.metrics import accuracy_score, roc_auc_score
 from torch_geometric.nn.models import LightGCN
-
+from .utils import setSeeds
 
 def build(n_node, weight=None, logger=None, **kwargs):
     model = LightGCN(n_node, **kwargs)
@@ -38,11 +38,12 @@ def train(
         os.makedirs(weight)
 
     if valid_data is None:
-        eids = np.arange(len(train_data["label"]))
-        eids = np.random.permutation(eids)[:1000]
-        edge, label = train_data["edge"], train_data["label"]
+        setSeeds() # 랜덤시드 설정
+        eids = np.arange(len(train_data["label"])) #(2475962,)
+        eids = np.random.permutation(eids)[:1000]  #(1000,)
+        edge, label = train_data["edge"], train_data["label"]    #edge=(2,2475962), label=(2475962)
         label = label.to("cpu").detach().numpy()
-        valid_data = dict(edge=edge[:, eids], label=label[eids])
+        valid_data = dict(edge=edge[:, eids], label=label[eids]) #edge=(2,1000), label=(1000,)
 
     logger.info(f"Training Started : n_epoch={n_epoch}")
     best_auc, best_epoch = 0, -1

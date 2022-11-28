@@ -23,6 +23,10 @@ def parse_args():
     )
 
     parser.add_argument(
+        "--partial_user", default=False, type=bool, help="640명 유저만"
+    )
+
+    parser.add_argument(
         "--model_dir", default="models/", type=str, help="model directory"
     )
     parser.add_argument(

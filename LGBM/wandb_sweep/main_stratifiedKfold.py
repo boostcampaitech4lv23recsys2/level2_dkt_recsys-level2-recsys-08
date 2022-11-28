@@ -9,6 +9,7 @@ from sklearn.metrics import roc_auc_score
 from sklearn.metrics import accuracy_score
 import numpy as np
 from utils import *
+from sklearn.model_selection import StratifiedGroupKFold
 import wandb
 
 def main(args):
@@ -22,14 +23,15 @@ def main(args):
 
     ## 1. 데이터 로딩
     data_dir = '/opt/ml/input/data' # 경로
-    train_file_path = os.path.join(data_dir, 'train_data.csv') # 데이터
-    test_file_path = os.path.join(data_dir, 'test_data.csv')
-    df_train = pd.read_csv(train_file_path)
+    # train_file_path = os.path.join(data_dir, 'train_data.csv') # 데이터
+    # test_file_path = os.path.join(data_dir, 'test_data.csv')
+    # df_train = pd.read_csv(train_file_path)
+    df = pd.read_csv(os.path.join(data_dir, 'train_test_last2.csv'))
     # df_test = pd.read_csv(test_file_path)
     # df_test = df_test[df_test.answerCode!=-1]  # answer_code -1 제외
 
     ## 2. FE
-    train_fe = feature_engineering(df_train)
+    # train_fe = feature_engineering(df_train)
     # test_fe = feature_engineering(df_test)
 
     # ## 3. train test split
@@ -46,15 +48,14 @@ def main(args):
     # y_test_main = valid['answerCode']
     # test_main = valid.drop(['answerCode'], axis=1)
 
-    ### 3.3 Base train test split
-    # 유저별 분리
-    train, test = custom_train_test_split(train_fe)
-
     # X, y 값 분리
-    y_train = train['answerCode']
-    train = train.drop(['answerCode'], axis=1)
-    y_test = test['answerCode']
-    test = test.drop(['answerCode'], axis=1)
+    n_splits = 6
+    k_auc_list = list()
+
+    cv = StratifiedGroupKFold(n_splits=n_splits)
+
+    x = df.drop('answerCode',axis=1)
+    y = df['answerCode']
 
     ## 4. train
     # 파라미터 설정
@@ -85,31 +86,47 @@ def main(args):
             'tag_sum',
             ]
 
-    # 사용 피처
-    using_feature = FEATS
+    for k, (train_idx, valid_idx) in enumerate(cv.split(x,y,df.group),1):
+        
+        # train 분리
+        train = x.iloc[train_idx]
+        y_train = y.iloc[train_idx]
+        
+        # valid 분리
+        val = x.iloc[valid_idx]
+        valid = val[val.valid==1]
+        y_valid = y.iloc[valid.index]
 
-    lgb_train = lgb.Dataset(train[using_feature], y_train)
-    lgb_test = lgb.Dataset(test[using_feature], y_test)
+        model = lgb.LGBMClassifier(
+        **params,
+        n_estimators=10000,
+        silent=-1,
+        )
 
-    model = lgb.train(
-        params, 
-        lgb_train,
-        valid_sets=[lgb_test],
-        verbose_eval=-1,
-        num_boost_round=10000,
-        early_stopping_rounds=100,
-    )
-
-    preds = model.predict(test[using_feature])
-    acc = accuracy_score(y_test, np.where(preds >= 0.5, 1, 0))
-    auc = roc_auc_score(y_test, preds)
-    metric={
+        model.fit(
+            X=train[FEATS],
+            y=y_train,
+            early_stopping_rounds=100,
+            eval_set=[(train[FEATS], y_train), (valid[FEATS], y_valid)],
+            eval_names=["train", "valid"],
+            eval_metric="roc_auc",
+            verbose=100,
+        )
+        
+        preds = model.predict_proba(valid[FEATS])[:, 1]
+        acc = accuracy_score(y_valid, np.where(preds >= 0.5, 1, 0))
+        auc = roc_auc_score(y_valid, preds)
+        k_auc_list.append(auc)
+        metric={
         "Valid/AUC": auc,
         "Valid/ACC": acc,
-        "best_iters":model.best_iteration,
-    }
-    wandb.log(metric)
-    print(f'VALID AUC : {auc} ACC : {acc}\n')
+        "best_iters":model.best_iteration_,
+        }
+        wandb.log(metric)
+        print(f'VALID AUC : {auc} ACC : {acc}\n')
+
+    kfold_auc = sum(k_auc_list) / n_splits
+    wandb.log({"kfold_auc":kfold_auc})
     wandb.finish()
 
 

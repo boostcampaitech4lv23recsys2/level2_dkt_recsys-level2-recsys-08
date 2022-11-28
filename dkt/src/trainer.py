@@ -8,6 +8,7 @@ from .criterion import get_criterion
 from .dataloader import get_loaders
 from .metric import get_metric
 from .model import LSTM, LSTMATTN, Bert
+from .lqtransformer import LQTransformer
 from .optimizer import get_optimizer
 from .scheduler import get_scheduler
 
@@ -82,9 +83,12 @@ def train(train_loader, model, optimizer, scheduler, args):
     total_targets = []
     losses = []
     for step, batch in enumerate(train_loader):
-        input = list(map(lambda t: t.to(args.device), process_batch(batch)))
-        preds = model(input)
-        targets = input[3]  # correct
+        input = list(map(lambda t: t.to(args.device), process_batch(batch))) #[6,64,20] 의 6 : [test, question, tag, correct, mask, interaction]
+        preds = model(input) #[64,20]
+        if args.model == 'lqtransformer':
+            targets = input[3][:,-1].unsqueeze(1)
+        else:
+            targets = input[3]  # correct #[64,20]
 
         loss = compute_loss(preds, targets)
         update_params(loss, model, optimizer, scheduler, args)
@@ -96,7 +100,7 @@ def train(train_loader, model, optimizer, scheduler, args):
         preds = preds[:, -1]
         targets = targets[:, -1]
 
-        total_preds.append(preds.detach())
+        total_preds.append(preds.detach()) #detach는 clone()같은 복사방법중 한방법. 기존 tensor에서 gradient 전파가 안되는 텐서 생성이라 한다.
         total_targets.append(targets.detach())
         losses.append(loss)
 
@@ -176,6 +180,8 @@ def get_model(args):
         model = LSTMATTN(args)
     if args.model == "bert":
         model = Bert(args)
+    if args.model == "lqtransformer":
+        model = LQTransformer(args)
 
     model.to(args.device)
 
