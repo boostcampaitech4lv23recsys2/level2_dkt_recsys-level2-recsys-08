@@ -14,10 +14,14 @@ class Preprocess:
     def __init__(self, args):
         self.args = args
         self.train_data = None
+        self.train_test_data = None
         self.test_data = None
 
     def get_train_data(self):
         return self.train_data
+
+    def get_train_test_data(self):
+        return self.train_test_data
 
     def get_test_data(self):
         return self.test_data
@@ -79,12 +83,16 @@ class Preprocess:
         return df
 
     def __feature_engineering(self, df):
-        # TODO
+        
+
+
         return df
 
-    def load_data_from_file(self, args, is_train=True):
-        csv_file_path = os.path.join(self.args.data_dir, args.file_name)
+    def load_data_from_file(self, args, file_name, is_train=True):
+        csv_file_path = os.path.join(self.args.data_dir, file_name)
         df = pd.read_csv(csv_file_path)  # , nrows=100000)
+        if is_train == True:
+            df = df[df['answerCode'] != -1]
         df = self.__feature_engineering(df)
         df = self.__preprocessing(df, args, is_train)
 
@@ -117,10 +125,13 @@ class Preprocess:
         return group.values
 
     def load_train_data(self, args):
-        self.train_data = self.load_data_from_file(args)
+        self.train_data = self.load_data_from_file(args, args.file_name)
 
-    def load_test_data(self, file_name):
-        self.test_data = self.load_data_from_file(args, is_train=False)
+    def load_train_test_data(self, args):
+        self.train_test_data = self.load_data_from_file(args, args.test_file_name)
+
+    def load_test_data(self, args):
+        self.test_data = self.load_data_from_file(args, args.test_file_name, is_train=False)
 
 
 class DKTDataset(torch.utils.data.Dataset):
