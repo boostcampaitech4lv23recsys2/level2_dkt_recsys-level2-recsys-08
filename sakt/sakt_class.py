@@ -75,10 +75,9 @@ class FFN(nn.Module):
         self.dropout = nn.Dropout(0.2)
     
     def forward(self, x):
-        x = self.lr1(x)
-        x = self.relu(x)
+        x = self.dropout(self.relu(self.lr1(x)))
         x = self.lr2(x)
-        return self.dropout(x)
+        return x
 
 def future_mask(seq_length):
     future_mask = np.triu(np.ones((seq_length, seq_length)), k=1).astype('bool')
