@@ -7,14 +7,13 @@ import subprocess as sp
 load_dotenv('../.env')
 breakpoint()
 
-random.seed(42)
-def custom_train_test_split(df, ratio=0.7, split=True):
+
+def custom_train_test_split(df, ratio=0.7, seed=41, split=True):
     """df를 입력받아서, userid들을 랜덤해서 1-ratio만큼의 user만 선별하고, 마지막 제출껀만 만들어서 train, test로 리턴 """
-    
+    random.seed(seed)
     ## (user_id, 문제푼 횟수)를 원소로 갖는 리스트
     users = list(zip(df['userID'].value_counts().index, df['userID'].value_counts()))
     random.shuffle(users) # 셔플
-    
     max_train_data_len = ratio*len(df) # train data 길이
     sum_of_train_data = 0
     user_ids =[]
