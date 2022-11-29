@@ -13,7 +13,7 @@ metric :
 parameters :
 # 학습 파라미터
   model :
-    value : "lstm" # ['lstm', 'lstmattn', 'bert']
+    value : "lqtransformer" # ['lstm', 'lstmattn', 'bert']
   
   optimizer :
     value : "adam"
@@ -22,8 +22,8 @@ parameters :
     value : "plateau"
 # 모델 내 파라미터
   hidden_dim :
-    value : 64
-    # values : []
+    # value : 64
+    values : [64,128,256,512,1024]
 
   n_layers :
     value : 2
@@ -34,19 +34,19 @@ parameters :
     # values : []
 
   drop_out :
-    value : 0.2
+    value : 0.1
     # values : []
 # 훈련 파라미터
   max_seq_len :
-    value : 20
-    # values : []
+    # value : 30
+    values : [10,20,30,40,50]
 
   num_workers :
     value : 1
     # values : []
 
   n_epochs :
-    value : 10
+    value : 100
     # values : []
   
   batch_size :
@@ -62,7 +62,7 @@ parameters :
     # values : []
   
   patience : 
-     value : 5
+     value : 20
     #  values : []
 
   log_steps :

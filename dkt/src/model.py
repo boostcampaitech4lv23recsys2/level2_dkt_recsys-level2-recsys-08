@@ -38,7 +38,7 @@ class LSTM(nn.Module):
 
     def forward(self, input):
 
-        test, question, tag, _, mask, interaction = input #(test, question, tag, correct, mask, interaction)
+        test, question, tag, _, mask, interaction, solvesec = input #(test, question, tag, correct, mask, interaction)
 
         batch_size = interaction.size(0)
 
@@ -111,7 +111,7 @@ class LSTMATTN(nn.Module):
 
     def forward(self, input):
 
-        test, question, tag, _, mask, interaction = input
+        test, question, tag, _, mask, interaction, solvesec = input
 
         batch_size = interaction.size(0)
 
@@ -131,21 +131,22 @@ class LSTMATTN(nn.Module):
             2,
         )
 
-        X = self.comb_proj(embed)
+        X = self.comb_proj(embed) #[64,20,64] : (batch, seq_len, emb_dim)
 
-        out, _ = self.lstm(X)
-        out = out.contiguous().view(batch_size, -1, self.hidden_dim)
+        out, _ = self.lstm(X)     #[64,20,64]
+        out = out.contiguous().view(batch_size, -1, self.hidden_dim) #[64,20,64]
 
         ## 이 부분이 특징적인  부분
-        extended_attention_mask = mask.unsqueeze(1).unsqueeze(2) # 차원 늘려주기
+        extended_attention_mask = mask.unsqueeze(1).unsqueeze(2) # 차원 늘려주기  [64,1,1,20]
         extended_attention_mask = extended_attention_mask.to(dtype=torch.float32)
         extended_attention_mask = (1.0 - extended_attention_mask) * -10000.0 # 마스킹 된 부분 가중치 낮게 줘서 학습 안되도록
-        head_mask = [None] * self.n_layers
+        head_mask = [None] * self.n_layers #[2]
 
-        encoded_layers = self.attn(out, extended_attention_mask, head_mask=head_mask) # BERT Encoder를 가져다 씀
-        sequence_output = encoded_layers[-1]
+        #self.attn = BertEncoder(self.config)
+        encoded_layers = self.attn(out, extended_attention_mask, head_mask=head_mask) #[1,64,20,64] # BERT Encoder를 가져다 씀
+        sequence_output = encoded_layers[-1] #[64,20,64]
 
-        out = self.fc(sequence_output).view(batch_size, -1)
+        out = self.fc(sequence_output).view(batch_size, -1) #[64,20]
         return out
 
 
@@ -191,7 +192,7 @@ class Bert(nn.Module):
         self.activation = nn.Sigmoid()
 
     def forward(self, input):
-        test, question, tag, _, mask, interaction = input
+        test, question, tag, _, mask, interaction, solvesec = input #(test, question, tag, correct, mask, interaction)
         batch_size = interaction.size(0)
 
         # 신나는 embedding
