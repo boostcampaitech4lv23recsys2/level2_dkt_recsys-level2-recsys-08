@@ -18,6 +18,7 @@ wandb/
 *.pt
 *.tsv
 *.tfevents
+mlruns/
 
 ##
 ## R Section - See https://github.com/github/gitignore/blob/master/R.gitignore
