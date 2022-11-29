@@ -158,20 +158,20 @@ class SAINTModel(nn.Module):
         self.n_skill = n_skill
         self.embed_dim = embed_dim
 
-        self.target_embedding = nn.Embedding(self.n_skill+1, embed_dim) ## target
-        self.test_id_embedding = nn.Embedding(1537, embed_dim) ## target
-        self.kT_embedding = nn.Embedding(912, embed_dim) ## target
-        self.uCA_embedding = nn.Embedding(1552, embed_dim) ## target
-        self.uAcc_embedding = nn.Embedding(196184, embed_dim) ## target
-        self.month_embedding = nn.Embedding(12, embed_dim) ## target
-        self.hour_embedding = nn.Embedding(24, embed_dim) ## target
-        self.bc_embedding = nn.Embedding(9, embed_dim) ## target
-        self.mC_embedding = nn.Embedding(198, embed_dim) ## target
-        self.testM_embedding = nn.Embedding(2471, embed_dim) ## target
-        self.tagM_embedding = nn.Embedding(1708, embed_dim) ## target
-        self.pos_embedding = nn.Embedding(max_seq-1, embed_dim) ## position
-        # self.pos_embedding = get_sinusoid_encoding_table(max_seq-1, self.embed_dim)
-        # self.pos_embedding =  torch.FloatTensor(self.pos_embedding).to(device)
+        self.target_embedding = nn.Embedding(9454, self.embed_dim) ## target
+        self.test_id_embedding = nn.Embedding(1537, self.embed_dim) ## target
+        self.kT_embedding = nn.Embedding(912, self.embed_dim) ## target
+        self.uCA_embedding = nn.Embedding(1552, self.embed_dim) ## target
+        self.uAcc_embedding = nn.Embedding(196184, self.embed_dim) ## target
+        self.month_embedding = nn.Embedding(12, self.embed_dim) ## target
+        self.hour_embedding = nn.Embedding(24, self.embed_dim) ## target
+        self.bc_embedding = nn.Embedding(9, self.embed_dim) ## target
+        self.mC_embedding = nn.Embedding(198, self.embed_dim) ## target
+        self.testM_embedding = nn.Embedding(2471, self.embed_dim) ## target
+        self.tagM_embedding = nn.Embedding(1708, self.embed_dim) ## target
+        # self.pos_embedding = nn.Embedding(max_seq-1, self.embed_dim) ## position
+        self.pos_embedding = get_sinusoid_encoding_table(max_seq-1, self.embed_dim)
+        self.pos_embedding =  torch.FloatTensor(self.pos_embedding).to('cuda')
 
         self.transformer = nn.Transformer(nhead=8, d_model = embed_dim, num_encoder_layers= N_LAYER, num_decoder_layers= N_LAYER, dropout = DROPOUT_RATE)
 
@@ -196,8 +196,9 @@ class SAINTModel(nn.Module):
         mC = self.mC_embedding(mC)
         testM = self.testM_embedding(testM)
         tagM = self.tagM_embedding(tagM)
-        pos_id = torch.arange(question.size(1)).unsqueeze(0).to(device)
-        pos_id = self.pos_embedding(pos_id)
+        # pos_id = torch.arange(question.size(1)).unsqueeze(0).to(device)
+        # pos_id = self.pos_embedding(pos_id)
+        pos_id = self.pos_embedding
         
         enc = question + pos_id
         dec = pos_id + test_ID + kT + uCA + uAcc + month + hour + bC + mC + testM + tagM       
