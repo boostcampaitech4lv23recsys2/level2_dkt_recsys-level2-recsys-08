@@ -45,13 +45,12 @@ class LQTransformer(nn.Module):
         self.embedding_test = nn.Embedding(self.args.n_test + 1, self.hidden_dim // 3)
         self.embedding_question = nn.Embedding(self.args.n_questions + 1, self.hidden_dim // 3)
         self.embedding_tag = nn.Embedding(self.args.n_tag + 1, self.hidden_dim // 3)
-        self.embedding_solvesec = nn.Embedding(3600+2, self.hidden_dim // 3)
 
         # positioal Embedding
         # self.embedding_pos = get_sinusoid_encoding_table(args.max_seq_len, self.hidden_dim)
         # self.embedding_pos =  torch.FloatTensor(self.embedding_pos).to(args.device)
         self.embedding_pos = get_pos(args.max_seq_len).to(args.device)
-        self.comb_proj = nn.Linear((self.hidden_dim // 3) * 5, self.hidden_dim) # 원하는 차원으로 줄이기
+        self.comb_proj = nn.Linear((self.hidden_dim // 3) * 4, self.hidden_dim) # 원하는 차원으로 줄이기
 
         # multihead attention(여기선 head를 1로 두었다.)
         self.multi_en = nn.MultiheadAttention( embed_dim= self.hidden_dim, num_heads= 1, dropout=0.1  )     # multihead attention    ## todo add dropout, LayerNORM
@@ -71,14 +70,17 @@ class LQTransformer(nn.Module):
 
 
     def forward(self, input):
-        test, question, tag, _, mask, interaction, solvesec = input #(test, question, tag, correct, mask, interaction)
+        test, question, tag, _, mask, interaction = input #(test, question, tag, correct, mask, interaction)
 
         # Embedding
         embed_test = self.embedding_test(test)                #shape = (64,20,21)
+        # embed_test = nn.Dropout(0.1)(embed_test)
         embed_question = self.embedding_question(question)
+        # embed_question = nn.Dropout(0.1)(embed_question)
         embed_tag = self.embedding_tag(tag) 
+        # embed_tag = nn.Dropout(0.1)(embed_tag)
         embed_interaction = self.embedding_interaction(interaction) #interaction의 값은 0/1/2 중 하나이다.
-        embed_solvesec = self.embedding_solvesec(solvesec)
+        # embed_interaction = nn.Dropout(0.1)(embed_interaction)
 
         embed = torch.cat(
             [
@@ -86,13 +88,13 @@ class LQTransformer(nn.Module):
                 embed_test,
                 embed_question,
                 embed_tag,
-                embed_solvesec
             ],
             2,
         )
 
         X = self.comb_proj(embed)
         X = X + self.embedding_pos #(64,20,64) (batch,seq,dim)
+        # X = nn.Dropout(0.1)(X)
 
         X = X.permute(1,0,2)       #(20,64,64)
         X = self.layer_norm1(X)

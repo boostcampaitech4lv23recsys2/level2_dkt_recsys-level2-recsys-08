@@ -83,19 +83,10 @@ class Preprocess:
         return df
 
     def __feature_engineering(self, df):
-        df.sort_values(['userID','Timestamp'])
-        df.reset_index(drop=True, inplace=True)
-        df['Timestamp_start'] = pd.to_datetime(df['Timestamp'])
-        df['Timestamp_fin'] = df.groupby('userID')['Timestamp_start'].shift(-1)
-        df['solvetime'] = df.Timestamp_fin - df.Timestamp_start
-        df['solvesec'] = df.solvetime.map(lambda x : x.total_seconds())
-        ques_sec_mean = df.groupby(['assessmentItemID'])['solvesec'].agg(['mean'])
-        ques_sec_mean.columns = ["ques_sec_mean"]
-        df = pd.merge(df, ques_sec_mean, on=['assessmentItemID'], how="left")
-        df['ques_sec_mean'] = df['ques_sec_mean']
-        df.solvesec = df.solvesec.fillna(df['ques_sec_mean'])
-        df.loc[df.solvesec>=3600,'solvesec']=3600
-        return df[['userID','assessmentItemID','testId','answerCode','KnowledgeTag','solvesec','Timestamp']]
+        
+
+
+        return df
 
     def load_data_from_file(self, args, file_name, is_train=True):
         csv_file_path = os.path.join(self.args.data_dir, file_name)
@@ -118,7 +109,7 @@ class Preprocess:
         )
 
         df = df.sort_values(by=["userID", "Timestamp"], axis=0)
-        columns = ['userID','assessmentItemID','testId','answerCode','KnowledgeTag','solvesec','Timestamp']
+        columns = ["userID", "assessmentItemID", "testId", "answerCode", "KnowledgeTag"]
         group = (
             df[columns]
             .groupby("userID")
@@ -128,7 +119,6 @@ class Preprocess:
                     r["assessmentItemID"].values,
                     r["KnowledgeTag"].values,
                     r["answerCode"].values,
-                    r["solvesec"].values,
                 )
             )
         )
@@ -155,9 +145,9 @@ class DKTDataset(torch.utils.data.Dataset):
         # 각 data의 sequence length
         seq_len = len(row[0])
 
-        test, question, tag, correct, solvesec = row[0], row[1], row[2], row[3], row[4]
+        test, question, tag, correct = row[0], row[1], row[2], row[3]
 
-        cate_cols = [test, question, tag, correct, solvesec]
+        cate_cols = [test, question, tag, correct]
 
         # max seq len을 고려하여서 이보다 길면 자르고 아닐 경우 그대로 냅둔다
         if seq_len > self.args.max_seq_len:
