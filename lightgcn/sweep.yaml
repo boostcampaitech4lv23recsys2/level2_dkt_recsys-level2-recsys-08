@@ -1,0 +1,50 @@
+program : sweep.py
+entity : recsys8
+project : GNN
+# 고정
+
+method : grid # grid,random,bayes
+name : GNN_sweep # 자유롭게 바꾸셔도 됩니다.
+
+metric :
+  name : best_auc
+  goal : maximize
+
+parameters :
+  use_cuda_if_available :
+    value : True
+  user_wandb :
+    value : True
+
+  # data
+  basepath :
+    value :  "/opt/ml/input/data/"
+  loader_verbose :
+    value : True
+
+  # dump
+  output_dir :
+    value : "./output/"
+  pred_file :
+    value : "submission.csv"
+
+  # build
+  embedding_dim :
+    value : 64  # int
+    # values : [16,32]
+  num_layers :
+    # value : 1  # int
+    values : [1,2]
+  weight :
+    value : "./weight/best_model.pt"
+
+  # train
+  n_epoch :
+    value :  5
+    # values : []
+  learning_rate :
+    value : 0.1
+    # values : []
+  weight_basepath :
+    value : "./weight"
+
