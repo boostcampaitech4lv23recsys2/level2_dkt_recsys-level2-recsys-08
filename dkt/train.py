@@ -13,6 +13,10 @@ def main(args):
     wandb.login()
     setSeeds(args.seed)
     args.device = "cuda" if torch.cuda.is_available() else "cpu"
+    #😇 피쳐 추가 시 수정 부분
+    args.custom_columns = ['testId']
+    args.columns = ['userID','Timestamp','answerCode'] + args.custom_columns
+    args.df_file_name = ''
     preprocess = Preprocess(args)
     preprocess.load_train_data(args)
     train_data = preprocess.get_train_data()  #shape = (6698, 4, interaction수_가변적)  
@@ -20,9 +24,9 @@ def main(args):
                                               #shape 중간의 4는 ["testID","assessmentItemID","knowledgeTag","answerCode"]+solvesec
     train_data, valid_data = preprocess.split_data(train_data)
     # answerCode가 -1제외 test데이터도 같이 학습
-    preprocess.load_train_test_data(args)
-    train_test_data = preprocess.get_train_test_data()
-    train_data = np.concatenate((train_data, train_test_data), axis=0)
+    # preprocess.load_train_test_data(args)
+    # train_test_data = preprocess.get_train_test_data()
+    # train_data = np.concatenate((train_data, train_test_data), axis=0)
 
     wandb.init(project="Sequential", entity = "recsys8", config=vars(args))
     wandb.run.name = f"{args.model}_juj" # 표시되는 이름을 바꾸고 싶다면 해당 줄을 바꿔주세요
