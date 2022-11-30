@@ -24,7 +24,7 @@ def main(args):
     # train_data = np.concatenate((train_data, train_test_data), axis=0)
     train_data, valid_data = preprocess.split_data(train_data)
     wandb.init(project="Sequential", entity = "recsys8", config=vars(args))
-    wandb.run.name = f"{args.model}_juj" # 표시되는 이름을 바꾸고 싶다면 해당 줄을 바꿔주세요
+    wandb.run.name = f"{args.model}" # 표시되는 이름을 바꾸고 싶다면 해당 줄을 바꿔주세요
     wandb.run.save()
 
     model = trainer.get_model(args).to(args.device)
