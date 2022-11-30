@@ -191,7 +191,6 @@ def get_model(args):
 # 배치 전처리
 def process_batch(batch):
 
-    ##여기 할거야!! batch = correct, test, mask 상태임
     test, question, tag, correct, solvesec, mask = batch
 
     # change to float
