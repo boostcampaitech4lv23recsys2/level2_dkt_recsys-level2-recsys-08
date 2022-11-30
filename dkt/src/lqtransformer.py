@@ -35,8 +35,8 @@ class Feed_Forward_block(nn.Module):
 class LQTransformer(nn.Module):
     def __init__(self, args):
         super().__init__()
-        self.args = args
 
+        self.args = args
         self.hidden_dim = self.args.hidden_dim
 
         # Embedding
@@ -52,35 +52,53 @@ class LQTransformer(nn.Module):
         self.embedding_pos = get_pos(args.max_seq_len).to(args.device)
         self.comb_proj = nn.Linear((self.hidden_dim // 3) * 4, self.hidden_dim) # 원하는 차원으로 줄이기
 
+        # query, key, value
+        self.query = nn.Linear(in_features=self.hidden_dim, out_features=self.hidden_dim)
+        self.key = nn.Linear(in_features=self.hidden_dim, out_features=self.hidden_dim)
+        self.value = nn.Linear(in_features=self.hidden_dim, out_features=self.hidden_dim)
+
         # multihead attention(여기선 head를 1로 두었다.)
-        self.multi_en = nn.MultiheadAttention( embed_dim= self.hidden_dim, num_heads= 1, dropout=0.1  )     # multihead attention    ## todo add dropout, LayerNORM
+        self.attn = nn.MultiheadAttention( embed_dim= self.hidden_dim, num_heads= 1, dropout=0.1)     # multihead attention    ## todo add dropout, LayerNORM
         
         #lstm
-        self.lstm = nn.LSTM(input_size= args.hidden_dim, hidden_size = self.hidden_dim, num_layers=1)
+        self.lstm = nn.LSTM(input_size= args.hidden_dim, hidden_size = self.hidden_dim, num_layers=self.args.n_layers)
 
         # layer norm
         self.layer_norm1 = nn.LayerNorm(self.hidden_dim)
         self.layer_norm2 = nn.LayerNorm(self.hidden_dim)
         
         # feed-forward
-        self.ffn_en = Feed_Forward_block(self.hidden_dim, 4*self.hidden_dim)  
+        self.ffn = Feed_Forward_block(self.hidden_dim, 4*self.hidden_dim)  
         
         # 최종 Wo 곱하기
-        self.out = nn.Linear(in_features= args.hidden_dim , out_features=1)                                          # feedforward block     ## todo dropout, LayerNorm
+        self.fc = nn.Linear(in_features=self.hidden_dim, out_features=1)
+       
+        self.activation = nn.Sigmoid()
 
+    def init_hidden(self, batch_size):
+        h = torch.zeros(
+            self.args.n_layers,
+            batch_size,
+            self.args.hidden_dim)
+        h = h.to(self.args.device)
+
+        c = torch.zeros(
+            self.args.n_layers,
+            batch_size,
+            self.args.hidden_dim)
+        c = c.to(self.args.device)
+
+        return (h, c)
 
     def forward(self, input):
         test, question, tag, _, mask, interaction = input #(test, question, tag, correct, mask, interaction)
+        batch_size = interaction.size(0)
 
-        # Embedding
+        ######## Embedding ########
         embed_test = self.embedding_test(test)                #shape = (64,20,21)
-        # embed_test = nn.Dropout(0.1)(embed_test)
         embed_question = self.embedding_question(question)
-        # embed_question = nn.Dropout(0.1)(embed_question)
         embed_tag = self.embedding_tag(tag) 
-        # embed_tag = nn.Dropout(0.1)(embed_tag)
         embed_interaction = self.embedding_interaction(interaction) #interaction의 값은 0/1/2 중 하나이다.
-        # embed_interaction = nn.Dropout(0.1)(embed_interaction)
 
         embed = torch.cat(
             [
@@ -92,33 +110,42 @@ class LQTransformer(nn.Module):
             2,
         )
 
-        X = self.comb_proj(embed)
-        X = X + self.embedding_pos #(64,20,64) (batch,seq,dim)
-        # X = nn.Dropout(0.1)(X)
+        embed = self.comb_proj(embed)
+        embed = embed + self.embedding_pos #(64,20,64) (batch,seq,dim)
+        # embed = nn.Dropout(0.1)(embed)
 
-        X = X.permute(1,0,2)       #(20,64,64)
-        X = self.layer_norm1(X)
-        skip_X = X
+        ######## Encoder ########
+        q = self.query(embed)[:, -1:, :].permute(1, 0, 2)
+        k = self.key(embed).permute(1, 0, 2)
+        v = self.value(embed).permute(1, 0, 2)
 
-        X, attn_wt = self.multi_en(X[-1:,:,:], X, X)         # Q,K,V
-        
-        X = X + skip_X #[20,64,64]
+        # attention
+        out, _ = self.attn(q, k, v)
 
+        # residual, layer_norm
+        out = out.permute(1, 0, 2)
+        out = embed + out
+        out = self.layer_norm1(out)
+        out_ = out
 
-        X, _ = self.lstm(X)
-        X = X[-1:,:,:]
+        # feed forward network
+        out = self.ffn(out)
 
-        #feed forward
-        X = X.permute(1,0,2)                                # (b,n,d)
-        X = self.layer_norm2(X)                           # Layer norm 
-        skip_X = X
-        X = self.ffn_en( X )
-        X = X + skip_X                                    # skip connection
-        
-        X = self.out( X )
+        # residual, layer_norm
+        out = out_ + out
+        out = self.layer_norm2(out)
 
-        return X.squeeze(-1)
+        ######## LSTM ########
+        hidden = self.init_hidden(batch_size)
+        out, hidden = self.lstm(out, hidden)
 
+        ######## DNN ########
+        out = out.contiguous().view(batch_size, -1, self.hidden_dim)
+        out = self.fc(out)
+
+        preds = self.activation(out).view(batch_size, -1)
+
+        return preds
 
 '''
 원본코드 참고용 (Riid 대회 1등 솔루션)
