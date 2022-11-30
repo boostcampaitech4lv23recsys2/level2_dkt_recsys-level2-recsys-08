@@ -323,6 +323,7 @@ class SAINTModel(nn.Module):
         self.layer_normal = nn.LayerNorm(embed_dim) 
         self.ffn = FFN(embed_dim)
         self.pred = nn.Linear(embed_dim, 1)
+        self.sig = nn.Sigmoid()
     
     def forward(self, assessmentItemID, testId, KnowledgeTag, user_correct_answer, user_total_answer, user_acc, \
             month, day, hour, big_category, problem_num, \
@@ -375,6 +376,7 @@ class SAINTModel(nn.Module):
         x = self.ffn(att_output)
         x = self.layer_normal(x + att_output)
         x = self.pred(x)
+        x = self.sig(x)
 
         return x.squeeze(-1)
 

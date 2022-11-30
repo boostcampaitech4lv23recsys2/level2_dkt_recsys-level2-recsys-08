@@ -101,6 +101,7 @@ class SAKTModel(nn.Module):
 
         self.ffn = FFN(embed_dim)
         self.pred = nn.Linear(embed_dim, 1)
+        self.sig = nn.Sigmoid()
     
     def forward(self, x, question_ids):
         device = x.device        
@@ -122,6 +123,7 @@ class SAKTModel(nn.Module):
         x = self.ffn(att_output)
         x = self.layer_normal(x + att_output)
         x = self.pred(x)
+        x = self.sig(x)
 
         return x.squeeze(-1), att_weight
 
