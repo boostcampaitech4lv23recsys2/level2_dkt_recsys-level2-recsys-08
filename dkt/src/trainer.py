@@ -85,10 +85,10 @@ def train(train_loader, model, optimizer, scheduler, args):
     for step, batch in enumerate(train_loader):
         input = list(map(lambda t: t.to(args.device), process_batch(batch))) #[6,64,20] 의 6 : [test, question, tag, correct, mask, interaction]
         preds = model(input) #[64,20]
-        if args.model == 'lqtransformer':
-            targets = input[3][:,-1].unsqueeze(1)
-        else:
-            targets = input[3]  # correct #[64,20]
+        # if args.model == 'lqtransformer':
+        #     targets = input[3][:,-1].unsqueeze(1)
+        # else:
+        targets = input[3]  # correct #[64,20]
 
         loss = compute_loss(preds, targets)
         update_params(loss, model, optimizer, scheduler, args)

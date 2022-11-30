@@ -58,10 +58,10 @@ class LQTransformer(nn.Module):
         self.value = nn.Linear(in_features=self.hidden_dim, out_features=self.hidden_dim)
 
         # multihead attention(여기선 head를 1로 두었다.)
-        self.attn = nn.MultiheadAttention( embed_dim= self.hidden_dim, num_heads= 1, dropout=0.1)     # multihead attention    ## todo add dropout, LayerNORM
+        self.attn = nn.MultiheadAttention( embed_dim= self.hidden_dim, num_heads= 1, batch_first = True, dropout=0.1)     # multihead attention    ## todo add dropout, LayerNORM
         
         #lstm
-        self.lstm = nn.LSTM(input_size= args.hidden_dim, hidden_size = self.hidden_dim, num_layers=self.args.n_layers)
+        self.lstm = nn.LSTM(input_size= self.hidden_dim, hidden_size = self.hidden_dim, num_layers=1, batch_first = True)
 
         # layer norm
         self.layer_norm1 = nn.LayerNorm(self.hidden_dim)
@@ -77,13 +77,15 @@ class LQTransformer(nn.Module):
 
     def init_hidden(self, batch_size):
         h = torch.zeros(
-            self.args.n_layers,
+            # self.args.n_layers,
+            1,
             batch_size,
             self.args.hidden_dim)
         h = h.to(self.args.device)
 
         c = torch.zeros(
-            self.args.n_layers,
+            # self.args.n_layers,
+            1,
             batch_size,
             self.args.hidden_dim)
         c = c.to(self.args.device)
@@ -92,7 +94,7 @@ class LQTransformer(nn.Module):
 
     def forward(self, input):
         test, question, tag, _, mask, interaction = input #(test, question, tag, correct, mask, interaction)
-        batch_size = interaction.size(0)
+        batch_size = interaction.size(0) #(64, 20)
 
         ######## Embedding ########
         embed_test = self.embedding_test(test)                #shape = (64,20,21)
@@ -110,20 +112,21 @@ class LQTransformer(nn.Module):
             2,
         )
 
-        embed = self.comb_proj(embed)
+        embed = self.comb_proj(embed) #64,20,64
         embed = embed + self.embedding_pos #(64,20,64) (batch,seq,dim)
         # embed = nn.Dropout(0.1)(embed)
 
         ######## Encoder ########
-        q = self.query(embed)[:, -1:, :].permute(1, 0, 2)
-        k = self.key(embed).permute(1, 0, 2)
-        v = self.value(embed).permute(1, 0, 2)
+        q = self.query(embed)[:, -1:, :]#.permute(1, 0, 2)
+        k = self.key(embed)#.permute(1, 0, 2)
+        v = self.value(embed)#.permute(1, 0, 2)
 
-        # attention
+        # attention seq, batch, emb
+        self.attn = nn.MultiheadAttention( embed_dim= self.hidden_dim, num_heads= 1, batch_first = True, dropout=0.1)     # multihead attention    ## todo add dropout, LayerNORM
         out, _ = self.attn(q, k, v)
 
         # residual, layer_norm
-        out = out.permute(1, 0, 2)
+        #out = out.permute(1, 0, 2)
         out = embed + out
         out = self.layer_norm1(out)
         out_ = out
@@ -133,17 +136,18 @@ class LQTransformer(nn.Module):
 
         # residual, layer_norm
         out = out_ + out
-        out = self.layer_norm2(out)
+        out = self.layer_norm2(out) #[64,20,64]
 
         ######## LSTM ########
-        hidden = self.init_hidden(batch_size)
-        out, hidden = self.lstm(out, hidden)
+        # self.lstm = nn.LSTM(input_size= self.hidden_dim, hidden_size = self.hidden_dim, num_layers=1, batch_first = True)
+        hidden = self.init_hidden(batch_size)  #shape = [2, 1, 64, 64]
+        out, hidden = self.lstm(out, hidden)   #out shape = [64, 20, 64]
 
         ######## DNN ########
         out = out.contiguous().view(batch_size, -1, self.hidden_dim)
-        out = self.fc(out)
+        out = self.fc(out) #[64, 20, 1]
 
-        preds = self.activation(out).view(batch_size, -1)
+        preds = self.activation(out).view(batch_size, -1) #[64, 20]
 
         return preds
 
