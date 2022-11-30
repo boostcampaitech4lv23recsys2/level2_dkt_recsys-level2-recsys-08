@@ -191,7 +191,7 @@ def get_model(args):
 # 배치 전처리
 def process_batch(batch):
 
-    test, question, tag, correct, solvesec, mask = batch
+    test, question, tag, correct, mask = batch
 
     # change to float
     mask = mask.float()
@@ -208,9 +208,8 @@ def process_batch(batch):
     test = ((test + 1) * mask).int()
     question = ((question + 1) * mask).int()
     tag = ((tag + 1) * mask).int()
-    solvesec = ((solvesec + 1) * mask).int()
 
-    return (test, question, tag, correct, mask, interaction, solvesec)
+    return (test, question, tag, correct, mask, interaction)
 
 
 # loss계산하고 parameter update!
