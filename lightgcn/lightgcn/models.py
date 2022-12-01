@@ -26,7 +26,7 @@ def train(
     valid_data=None,
     n_epoch=100,
     learning_rate=0.01,
-    use_wandb=False,
+    use_wandb=None,
     weight=None,
     logger=None,
 ):
@@ -82,6 +82,7 @@ def train(
                 )
 
             if use_wandb:
+                wandb.log(dict(best_auc=best_auc))
                 wandb.run.summary['best_auc'] = best_auc
                 
     torch.save(
