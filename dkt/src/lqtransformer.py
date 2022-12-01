@@ -122,7 +122,6 @@ class LQTransformer(nn.Module):
         v = self.value(embed)#.permute(1, 0, 2)
 
         # attention seq, batch, emb
-        self.attn = nn.MultiheadAttention( embed_dim= self.hidden_dim, num_heads= 1, batch_first = True, dropout=0.1)     # multihead attention    ## todo add dropout, LayerNORM
         out, _ = self.attn(q, k, v)
 
         # residual, layer_norm
@@ -139,7 +138,6 @@ class LQTransformer(nn.Module):
         out = self.layer_norm2(out) #[64,20,64]
 
         ######## LSTM ########
-        # self.lstm = nn.LSTM(input_size= self.hidden_dim, hidden_size = self.hidden_dim, num_layers=1, batch_first = True)
         hidden = self.init_hidden(batch_size)  #shape = [2, 1, 64, 64]
         out, hidden = self.lstm(out, hidden)   #out shape = [64, 20, 64]
 
