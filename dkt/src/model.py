@@ -12,6 +12,8 @@ except:
 
 
 class LSTM(nn.Module):
+    #new_feature 를 추가하고 싶으시면, embedding 부분만 바꾸면 됩니다.
+    #lqtransformer.py의 임베딩 부분을 참고해주세요! -> lqtransformer.py에서 "new_feature" 찾기 기능
     def __init__(self, args):
         super(LSTM, self).__init__()
         self.args = args
@@ -39,6 +41,7 @@ class LSTM(nn.Module):
     def forward(self, input):
 
         test, question, tag, _, mask, interaction = input #(test, question, tag, correct, mask, interaction)
+        # test, question, tag, _, mask, interaction, new_feature = input
 
         batch_size = interaction.size(0)
 
@@ -112,6 +115,7 @@ class LSTMATTN(nn.Module):
     def forward(self, input):
 
         test, question, tag, _, mask, interaction = input
+        # test, question, tag, _, mask, interaction, new_feature = input
 
         batch_size = interaction.size(0)
 
@@ -191,7 +195,9 @@ class Bert(nn.Module):
         self.activation = nn.Sigmoid()
 
     def forward(self, input):
-        test, question, tag, _, mask, interaction = input
+        test, question, tag, _, mask, interaction = input #(test, question, tag, correct, mask, interaction)
+        # test, question, tag, _, mask, interaction, new_feature = input
+
         batch_size = interaction.size(0)
 
         # 신나는 embedding

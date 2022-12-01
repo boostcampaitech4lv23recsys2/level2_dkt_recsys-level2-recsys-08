@@ -110,6 +110,7 @@ class Preprocess:
 
         df = df.sort_values(by=["userID", "Timestamp"], axis=0)
         columns = ["userID", "assessmentItemID", "testId", "answerCode", "KnowledgeTag"]
+        # columns = ['userID', 'assessmentItemID', 'testId', 'answerCode', 'KnowledgeTag','new_feature']
         group = (
             df[columns]
             .groupby("userID")
@@ -119,6 +120,7 @@ class Preprocess:
                     r["assessmentItemID"].values,
                     r["KnowledgeTag"].values,
                     r["answerCode"].values,
+                    # r["new_feature"].values,
                 )
             )
         )
@@ -146,8 +148,12 @@ class DKTDataset(torch.utils.data.Dataset):
         seq_len = len(row[0])
 
         test, question, tag, correct = row[0], row[1], row[2], row[3]
-
+        # test, question, tag, correct, new_feature = row[0], row[1], row[2], row[3], row[4]
         cate_cols = [test, question, tag, correct]
+
+        #test, question, tag, correct, new_feature = row[0], row[1], row[2], row[3], row[4]
+        #cate_cols = [test, question, tag, correct, new_feature]
+
 
         # max seq len을 고려하여서 이보다 길면 자르고 아닐 경우 그대로 냅둔다
         if seq_len > self.args.max_seq_len:
