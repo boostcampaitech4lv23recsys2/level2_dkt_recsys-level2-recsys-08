@@ -4,7 +4,7 @@
 class CFG:
     use_cuda_if_available = True
     user_wandb = True
-    wandb_kwargs = dict(project="GNN",entity = 'recsys8')
+    wandb_kwargs = dict(project="lightGCN",entity = 'recsys8')
 
     # data
     basepath = "/opt/ml/input/data/"
@@ -17,7 +17,7 @@ class CFG:
     # build
     embedding_dim = 64  # int
     num_layers = 1  # int
-    alpha = None  # Optional[Union[float, Tensor]]
+    alpha = None  # Optional[Union[float, Tensor]] # None이면 디폴트로 alpha = 1. / (num_layers + 1) 이다.
     build_kwargs = {}  # other arguments
     weight = "./weight/best_model.pt"
 
