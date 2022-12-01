@@ -9,6 +9,7 @@ from .dataloader import get_loaders
 from .metric import get_metric
 from .model import LSTM, LSTMATTN, Bert
 from .lqtransformer import LQTransformer
+from .lgcn_lqtransfomer import lightGCN_LQTransformer
 from .optimizer import get_optimizer
 from .scheduler import get_scheduler
 
@@ -85,7 +86,7 @@ def train(train_loader, model, optimizer, scheduler, args):
     for step, batch in enumerate(train_loader):
         input = list(map(lambda t: t.to(args.device), process_batch(batch))) #[6,64,20] 의 6 : [test, question, tag, correct, mask, interaction]
         preds = model(input) #[64,20]
-        if args.model == 'lqtransformer':
+        if args.model == 'lqtransformer' or args.model == 'lgcnlqt':
             targets = input[3][:,-1].unsqueeze(1)
         else:
             targets = input[3]  # correct #[64,20]
@@ -182,7 +183,9 @@ def get_model(args):
         model = Bert(args)
     if args.model == "lqtransformer":
         model = LQTransformer(args)
-
+    if args.model == "lgcnlqt":
+        model = lightGCN_LQTransformer(args)
+        
     model.to(args.device)
 
     return model

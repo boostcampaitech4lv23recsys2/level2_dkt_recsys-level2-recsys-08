@@ -1,10 +1,10 @@
-program : sweep.py
+program : train.py
 entity : recsys8
-project : GNN
+project : lightGCN
 # 고정
 
-method : grid # grid,random,bayes
-name : GNN_sweep # 자유롭게 바꾸셔도 됩니다.
+method : bayes # grid,random,bayes
+name : lightGCN_lr_sweep2 # 자유롭게 바꾸셔도 됩니다.
 
 metric :
   name : best_auc
@@ -30,21 +30,23 @@ parameters :
 
   # build
   embedding_dim :
-    value : 64  # int
-    # values : [16,32]
+    value : 128  # int
+    # values : [16,32,64,128]
   num_layers :
-    # value : 1  # int
-    values : [1,2]
+    value : 1  # int
+    # values : [1,2]
   weight :
     value : "./weight/best_model.pt"
 
   # train
   n_epoch :
-    value :  5
-    # values : []
+    value :  30
+    # values : [5, 10, 15, 20, 25, 30]
   learning_rate :
-    value : 0.1
-    # values : []
+    # value : 0.1
+    # values : [0.1, 0.01, 0.001] 
+    min : 0.0001
+    max : 0.1
   weight_basepath :
     value : "./weight"
 
