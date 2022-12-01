@@ -60,7 +60,7 @@ class lightGCN_LQTransformer(nn.Module):
         # lightGCN embed matrix와 id2index
         self.embed, self.n_user = self.get_embed()
         # 다른 임베딩 벡터들과 차원 맞춰주기
-        self.lgcn_linear = nn.Linear(64, self.hidden_dim // 3)
+        self.lgcn_linear = nn.Linear(CFG.embedding_dim, self.hidden_dim // 3)
     
     ### lightGCN 모델 데이터셋 준비
     def indexing_data(self, data):

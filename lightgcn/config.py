@@ -23,7 +23,7 @@ class CFG:
 
     # train
     n_epoch = 20
-    learning_rate = 0.1 # 0.001 -> 0.1로 수정 (아직 파라미터 실험 전)
+    learning_rate = 0.1 # 0.001 -> 0.1로 수정
     weight_basepath = "./weight"
 
 
