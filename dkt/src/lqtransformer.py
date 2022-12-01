@@ -39,38 +39,42 @@ class LQTransformer(nn.Module):
         self.args = args
         self.hidden_dim = self.args.hidden_dim
 
-        # Embedding
+        ######## 신나는 Embedding ########
         # interaction은 현재 correct로 구성되어있다. correct(1, 2) + padding(0)
         self.embedding_interaction = nn.Embedding(3, self.hidden_dim // 3)
         self.embedding_test = nn.Embedding(self.args.n_test + 1, self.hidden_dim // 3)
         self.embedding_question = nn.Embedding(self.args.n_questions + 1, self.hidden_dim // 3)
         self.embedding_tag = nn.Embedding(self.args.n_tag + 1, self.hidden_dim // 3)
+        # self.embedding_new_feature = nn.Embedding(self.args.n_new_feature + 1, self.hidden_dim // 3)
 
-        # positioal Embedding
+        ######## positioal Embedding ########
+        ## sin, cos positional embedding
         # self.embedding_pos = get_sinusoid_encoding_table(args.max_seq_len, self.hidden_dim)
         # self.embedding_pos =  torch.FloatTensor(self.embedding_pos).to(args.device)
+        ## arange positional embedding
         self.embedding_pos = get_pos(args.max_seq_len).to(args.device)
         self.comb_proj = nn.Linear((self.hidden_dim // 3) * 4, self.hidden_dim) # 원하는 차원으로 줄이기
+        #new_feature : self.comb_proj = nn.Linear((self.hidden_dim // 3) * 5, self.hidden_dim) # 원하는 차원으로 줄이기
 
-        # query, key, value
+        ######## query, key, value ########
         self.query = nn.Linear(in_features=self.hidden_dim, out_features=self.hidden_dim)
         self.key = nn.Linear(in_features=self.hidden_dim, out_features=self.hidden_dim)
         self.value = nn.Linear(in_features=self.hidden_dim, out_features=self.hidden_dim)
 
-        # multihead attention(여기선 head를 1로 두었다.)
+        ######## multihead attention(여기선 head를 1로 두었다.) ########
         self.attn = nn.MultiheadAttention( embed_dim= self.hidden_dim, num_heads= 1, batch_first = True, dropout=0.1)     # multihead attention    ## todo add dropout, LayerNORM
         
-        #lstm
+        ######## lstm ########
         self.lstm = nn.LSTM(input_size= self.hidden_dim, hidden_size = self.hidden_dim, num_layers=1, batch_first = True)
 
-        # layer norm
+        ######## layer norm ########
         self.layer_norm1 = nn.LayerNorm(self.hidden_dim)
         self.layer_norm2 = nn.LayerNorm(self.hidden_dim)
         
-        # feed-forward
+        ######## feed-forward ########
         self.ffn = Feed_Forward_block(self.hidden_dim, 4*self.hidden_dim)  
         
-        # 최종 Wo 곱하기
+        ######## fully connect ########
         self.fc = nn.Linear(in_features=self.hidden_dim, out_features=1)
        
         self.activation = nn.Sigmoid()
@@ -94,6 +98,7 @@ class LQTransformer(nn.Module):
 
     def forward(self, input):
         test, question, tag, _, mask, interaction = input #(test, question, tag, correct, mask, interaction)
+        # test, question, tag, _, mask, interaction, new_feature = input
         batch_size = interaction.size(0) #(64, 20)
 
         ######## Embedding ########
@@ -101,6 +106,7 @@ class LQTransformer(nn.Module):
         embed_question = self.embedding_question(question)
         embed_tag = self.embedding_tag(tag) 
         embed_interaction = self.embedding_interaction(interaction) #interaction의 값은 0/1/2 중 하나이다.
+        # embed_new_feature = self.embedding_new_feature(new_feature)
 
         embed = torch.cat(
             [
@@ -108,6 +114,7 @@ class LQTransformer(nn.Module):
                 embed_test,
                 embed_question,
                 embed_tag,
+                # embed_new_feature,
             ],
             2,
         )
