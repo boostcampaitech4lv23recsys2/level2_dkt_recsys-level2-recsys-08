@@ -86,10 +86,11 @@ def train(train_loader, model, optimizer, scheduler, args):
     for step, batch in enumerate(train_loader):
         input = list(map(lambda t: t.to(args.device), process_batch(batch))) #[6,64,20] 의 6 : [test, question, tag, correct, mask, interaction]
         preds = model(input) #[64,20]
-        if args.model == 'lqtransformer' or args.model == 'lgcnlqt':
-            targets = input[3][:,-1].unsqueeze(1)
-        else:
-            targets = input[3]  # correct #[64,20]
+        ## 구버전 lqtransformer 쓸 때 아래 3줄 사용
+        # if args.model == 'lqtransformer':
+        #     targets = input[3][:,-1].unsqueeze(1)
+        # else:
+        targets = input[3]  # correct #[64,20]
 
         loss = compute_loss(preds, targets)
         update_params(loss, model, optimizer, scheduler, args)
@@ -195,6 +196,7 @@ def get_model(args):
 def process_batch(batch):
 
     test, question, tag, correct, mask = batch
+    # test, question, tag, correct, new_feature, mask = batch
 
     # change to float
     mask = mask.float()
@@ -211,8 +213,11 @@ def process_batch(batch):
     test = ((test + 1) * mask).int()
     question = ((question + 1) * mask).int()
     tag = ((tag + 1) * mask).int()
+    # new_feature = ((new_feature + 1) * mask).int()
+    
 
     return (test, question, tag, correct, mask, interaction)
+    # return (test, question, tag, correct, mask, interaction, new_feature)
 
 
 # loss계산하고 parameter update!
