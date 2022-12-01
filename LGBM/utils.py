@@ -3,6 +3,7 @@ import pandas as pd
 import os
 from dotenv import load_dotenv
 import subprocess as sp
+import re
 
 load_dotenv('../.env')
 breakpoint()
@@ -67,3 +68,9 @@ def post_slack(message):
     message=f'curl -s -d "payload={{\\"username\\":\\"{NAME}\\", \\"text\\":\\"\`\`\`{message}\`\`\`\\"}}" "{API}"'
     # post message
     sp.getstatusoutput(message)
+
+
+def title2filename(title):
+    new_str = re.sub(r"[^\uAC00-\uD7A30-9a-zA-Z\s]", " ", title)
+    file_str = '_'.join(new_str.split())
+    return file_str
