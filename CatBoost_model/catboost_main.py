@@ -46,7 +46,7 @@ def main(args):
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
 
-    parser.add_argument("--data_dir", type=str, default="/opt/ml/input/data/[내보낼 피클 파일 이름].pkl")
+    parser.add_argument("--data_dir", type=str, default="/opt/ml/input/data/ref_FE_1.pkl")
     parser.add_argument("--inference_dir", type=str, default="/opt/ml/input/data/sample_submission.csv")
 
     parser.add_argument("--output_dir", type=str, default="/opt/ml/input/code/CatBoost_model/catboost_output")
