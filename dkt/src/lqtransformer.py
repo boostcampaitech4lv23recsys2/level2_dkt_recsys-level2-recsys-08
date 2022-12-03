@@ -42,9 +42,11 @@ class LQTransformer(nn.Module):
         ######## 신나는 Embedding ########
         # interaction은 현재 correct로 구성되어있다. correct(1, 2) + padding(0)
         self.embedding_interaction = nn.Embedding(3, self.hidden_dim // 3)
-        self.embedding_test = nn.Embedding(self.args.n_test + 1, self.hidden_dim // 3)
-        self.embedding_question = nn.Embedding(self.args.n_questions + 1, self.hidden_dim // 3)
-        self.embedding_tag = nn.Embedding(self.args.n_tag + 1, self.hidden_dim // 3)
+        self.embedding_big_category = nn.Embedding(self.args.n_big_category + 1, self.hidden_dim // 3)
+        self.embedding_mid_category = nn.Embedding(self.args.n_mid_category + 1, self.hidden_dim // 3)
+        self.embedding_problem_num = nn.Embedding(self.args.n_problem_num + 1, self.hidden_dim // 3)
+        self.embedding_month = nn.Embedding(self.args.n_month + 1, self.hidden_dim // 3)
+        self.embedding_dayname = nn.Embedding(self.args.n_dayname + 1, self.hidden_dim // 3)
         # self.embedding_new_feature = nn.Embedding(self.args.n_new_feature + 1, self.hidden_dim // 3)
 
         ######## positioal Embedding ########
@@ -53,29 +55,29 @@ class LQTransformer(nn.Module):
         # self.embedding_pos =  torch.FloatTensor(self.embedding_pos).to(args.device)
         ## arange positional embedding
         self.embedding_pos = get_pos(args.max_seq_len).to(args.device)
-        self.comb_proj = nn.Linear((self.hidden_dim // 3) * 4, self.hidden_dim) # 원하는 차원으로 줄이기
+        self.comb_proj = nn.Linear((self.hidden_dim // 3) * 6+1, self.hidden_dim) # 원하는 차원으로 줄이기
         #new_feature : self.comb_proj = nn.Linear((self.hidden_dim // 3) * 5, self.hidden_dim) # 원하는 차원으로 줄이기
 
         ######## query, key, value ########
-        self.query = nn.Linear(in_features=self.hidden_dim, out_features=self.hidden_dim)
-        self.key = nn.Linear(in_features=self.hidden_dim, out_features=self.hidden_dim)
-        self.value = nn.Linear(in_features=self.hidden_dim, out_features=self.hidden_dim)
+        self.query = nn.Linear(in_features=(self.hidden_dim // 3) * 6+1, out_features=(self.hidden_dim // 3) * 6+1)
+        self.key = nn.Linear(in_features=(self.hidden_dim // 3) * 6+1, out_features=(self.hidden_dim // 3) * 6+1)
+        self.value = nn.Linear(in_features=(self.hidden_dim // 3) * 6+1, out_features=(self.hidden_dim // 3) * 6+1)
 
         ######## multihead attention(여기선 head를 1로 두었다.) ########
-        self.attn = nn.MultiheadAttention( embed_dim= self.hidden_dim, num_heads= 1, batch_first = True, dropout=0.1)     # multihead attention    ## todo add dropout, LayerNORM
+        self.attn = nn.MultiheadAttention( embed_dim= (self.hidden_dim // 3) * 6+1, num_heads= 1, batch_first = True, dropout=0.1)     # multihead attention    ## todo add dropout, LayerNORM
         
         ######## lstm ########
-        self.lstm = nn.LSTM(input_size= self.hidden_dim, hidden_size = self.hidden_dim, num_layers=1, batch_first = True)
+        self.lstm = nn.LSTM(input_size= (self.hidden_dim // 3) * 6+1, hidden_size = (self.hidden_dim // 3) * 6+1, num_layers=1, batch_first = True)
 
         ######## layer norm ########
-        self.layer_norm1 = nn.LayerNorm(self.hidden_dim)
-        self.layer_norm2 = nn.LayerNorm(self.hidden_dim)
+        self.layer_norm1 = nn.LayerNorm((self.hidden_dim // 3) * 6+1)
+        self.layer_norm2 = nn.LayerNorm((self.hidden_dim // 3) * 6+1)
         
         ######## feed-forward ########
-        self.ffn = Feed_Forward_block(self.hidden_dim, 4*self.hidden_dim)  
+        self.ffn = Feed_Forward_block((self.hidden_dim // 3) * 6+1, 4*self.hidden_dim)  
         
         ######## fully connect ########
-        self.fc = nn.Linear(in_features=self.hidden_dim, out_features=1)
+        self.fc = nn.Linear(in_features=(self.hidden_dim // 3) * 6+1, out_features=1)
        
         self.activation = nn.Sigmoid()
 
@@ -84,42 +86,48 @@ class LQTransformer(nn.Module):
             # self.args.n_layers,
             1,
             batch_size,
-            self.args.hidden_dim)
+            (self.hidden_dim // 3) * 6+1)
         h = h.to(self.args.device)
 
         c = torch.zeros(
             # self.args.n_layers,
             1,
             batch_size,
-            self.args.hidden_dim)
+            (self.hidden_dim // 3) * 6+1)
         c = c.to(self.args.device)
 
         return (h, c)
 
     def forward(self, input):
-        test, question, tag, _, mask, interaction = input #(test, question, tag, correct, mask, interaction)
+        # test, question, tag, _, mask, interaction = input #(test, question, tag, correct, mask, interaction)
+        big_category, mid_category, problem_num, _, month, dayname, solvesec_600_NA, mask, interaction = input
         # test, question, tag, _, mask, interaction, new_feature = input
         batch_size = interaction.size(0) #(64, 20)
 
         ######## Embedding ########
-        embed_test = self.embedding_test(test)                #shape = (64,20,21)
-        embed_question = self.embedding_question(question)
-        embed_tag = self.embedding_tag(tag) 
-        embed_interaction = self.embedding_interaction(interaction) #interaction의 값은 0/1/2 중 하나이다.
+        embed_big_category = self.embedding_big_category(big_category.type(torch.cuda.IntTensor))                #shape = (64,20,21)
+        embed_mid_category = self.embedding_mid_category(mid_category.type(torch.cuda.IntTensor))
+        embed_problem_num = self.embedding_problem_num(problem_num.type(torch.cuda.IntTensor)) 
+        embed_interaction = self.embedding_interaction(interaction.type(torch.cuda.IntTensor))
+        embed_month = self.embedding_month(month.type(torch.cuda.IntTensor))
+        embed_dayname = self.embedding_dayname(dayname.type(torch.cuda.IntTensor))
         # embed_new_feature = self.embedding_new_feature(new_feature)
 
         embed = torch.cat(
             [
+                embed_big_category,
+                embed_mid_category,
+                embed_problem_num,
                 embed_interaction,
-                embed_test,
-                embed_question,
-                embed_tag,
+                embed_month,
+                embed_dayname,
+                solvesec_600_NA.unsqueeze(2)
                 # embed_new_feature,
             ],
             2,
         )
 
-        embed = self.comb_proj(embed) #64,20,64
+        # embed = self.comb_proj(embed) #64,20,64
         embed = embed + self.embedding_pos #(64,20,64) (batch,seq,dim)
         # embed = nn.Dropout(0.1)(embed)
 
@@ -149,7 +157,7 @@ class LQTransformer(nn.Module):
         out, hidden = self.lstm(out, hidden)   #out shape = [64, 20, 64]
 
         ######## DNN ########
-        out = out.contiguous().view(batch_size, -1, self.hidden_dim)
+        out = out.contiguous().view(batch_size, -1, (self.hidden_dim // 3) * 6+1)
         out = self.fc(out) #[64, 20, 1]
 
         preds = self.activation(out).view(batch_size, -1) #[64, 20]
