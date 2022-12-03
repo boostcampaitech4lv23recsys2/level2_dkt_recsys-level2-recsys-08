@@ -9,7 +9,7 @@ from .dataloader import get_loaders
 from .metric import get_metric
 from .model import LSTM, LSTMATTN, Bert
 from .lqtransformer import LQTransformer
-# from .lgcn_lqtransfomer import lightGCN_LQTransformer
+from .lgcn_lqtransfomer import lightGCN_LQTransformer
 from .optimizer import get_optimizer
 from .scheduler import get_scheduler
 
@@ -195,7 +195,7 @@ def get_model(args):
 # 배치 전처리
 def process_batch(batch):
 
-    big_category, mid_category, problem_num, correct, month, dayname, solvesec_600_NA, mask = batch
+    test, question, tag, correct, mask = batch
     # test, question, tag, correct, new_feature, mask = batch
 
     # change to float
@@ -210,16 +210,13 @@ def process_batch(batch):
     interaction = (interaction * interaction_mask).to(torch.int64)
 
     #  test_id, question_id, tag
-    test = ((big_category + 1) * mask).int()
-    question = ((mid_category + 1) * mask).int()
-    tag = ((problem_num + 1) * mask).int()
-    tag = ((month + 1) * mask).int()
-    tag = ((dayname + 1) * mask).int()
-    tag = ((solvesec_600_NA + 1) * mask).int()
+    test = ((test + 1) * mask).int()
+    question = ((question + 1) * mask).int()
+    tag = ((tag + 1) * mask).int()
     # new_feature = ((new_feature + 1) * mask).int()
     
 
-    return (big_category, mid_category, problem_num, correct, month, dayname, solvesec_600_NA, mask, interaction)
+    return (test, question, tag, correct, mask, interaction)
     # return (test, question, tag, correct, mask, interaction, new_feature)
 
 

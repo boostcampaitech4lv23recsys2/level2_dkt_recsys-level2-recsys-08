@@ -45,8 +45,7 @@ class Preprocess:
         np.save(le_path, encoder.classes_)
 
     def __preprocessing(self, df, args, is_train=True):
-        # cate_cols = ["assessmentItemID", "testId", "KnowledgeTag"]
-        cate_cols = ['big_category', 'mid_category', 'problem_num', 'month', 'dayname']
+        cate_cols = ["assessmentItemID", "testId", "KnowledgeTag"]
         if args.partial_user: #640명에 대해서 자른다.
             df = df[df['userID'] < 717]
         if not os.path.exists(self.args.asset_dir):
@@ -83,41 +82,11 @@ class Preprocess:
 
         return df
 
-
     def __feature_engineering(self, df):
         
-        day_dict = {'Tuesday': 0,
-        'Thursday': 1,
-        'Friday': 2,
-        'Wednesday' : 3,
-        'Monday': 4,
-        'Saturday': 5,
-        'Sunday': 6}
 
-        df2 = df.copy()
-        #유저별 시퀀스를 고려하기 위해 아래와 같이 정렬
-        df2.sort_values(by=['userID','Timestamp'], inplace=True)
-        
-        df2['big_category'] = df2.testId.map(lambda x:x[2]).astype(int)
-        df2['mid_category'] = df2.testId.map(lambda x: int(x[-3:]))
-        df2['problem_num'] = df2.assessmentItemID.map(lambda x: int(x[-3:]))
-        
-        df2['month'] = pd.to_datetime(df2.Timestamp).dt.month
-        correct_m = df2.groupby(['month'])['answerCode'].agg(['mean'])
-        correct_m.columns = ['month_mean']
-        df2 = pd.merge(df2, correct_m, on=['month'], how="left")
-        
-        df2['dayname'] = pd.to_datetime(df2.Timestamp).dt.day_name().map(day_dict)
-        
-        df2['Timestamp_start'] = pd.to_datetime(df['Timestamp'])
-        df2['Timestamp_fin'] = df2.groupby('userID')['Timestamp_start'].shift(-1)
-        df2['solvetime'] = df2.Timestamp_fin - df2.Timestamp_start
-        df2['solvesec_600_NA'] = df2.solvetime.map(lambda x : x.total_seconds()).shift(1).fillna(0)
-        df2.loc[df2.solvesec_600_NA>=600,'solvesec_600_NA']=0
-        
-        return df2[['userID', 'Timestamp', 'answerCode', 'big_category', 'mid_category',\
-                    'problem_num', 'month', 'dayname', 'solvesec_600_NA']]
-        # return df
+
+        return df
 
     def load_data_from_file(self, args, file_name, is_train=True):
         csv_file_path = os.path.join(self.args.data_dir, file_name)
@@ -129,38 +98,28 @@ class Preprocess:
 
         # 추후 feature를 embedding할 시에 embedding_layer의 input 크기를 결정할때 사용
 
-        self.args.n_big_category = df['big_category'].nunique()
-        self.args.n_mid_category = df['mid_category'].nunique()
-        self.args.n_problem_num = df['problem_num'].nunique()
-        self.args.n_month = df['month'].nunique()
-        self.args.n_dayname = df['dayname'].nunique()
-
-        # self.args.n_questions = len(
-        #     np.load(os.path.join(self.args.asset_dir, "assessmentItemID_classes.npy"))
-        # )
-        # self.args.n_test = len(
-        #     np.load(os.path.join(self.args.asset_dir, "testId_classes.npy"))
-        # )
-        # self.args.n_tag = len(
-        #     np.load(os.path.join(self.args.asset_dir, "KnowledgeTag_classes.npy"))
-        # )
+        self.args.n_questions = len(
+            np.load(os.path.join(self.args.asset_dir, "assessmentItemID_classes.npy"))
+        )
+        self.args.n_test = len(
+            np.load(os.path.join(self.args.asset_dir, "testId_classes.npy"))
+        )
+        self.args.n_tag = len(
+            np.load(os.path.join(self.args.asset_dir, "KnowledgeTag_classes.npy"))
+        )
 
         df = df.sort_values(by=["userID", "Timestamp"], axis=0)
-        columns = ['userID', 'big_category', 'mid_category',\
-                    'problem_num', 'answerCode', 'month', 'dayname', 'solvesec_600_NA']
+        columns = ["userID", "assessmentItemID", "testId", "answerCode", "KnowledgeTag"]
         # columns = ['userID', 'assessmentItemID', 'testId', 'answerCode', 'KnowledgeTag','new_feature']
         group = (
             df[columns]
             .groupby("userID")
             .apply(
                 lambda r: (
-                    r["big_category"].values,
-                    r["mid_category"].values,
-                    r["problem_num"].values,
+                    r["testId"].values,
+                    r["assessmentItemID"].values,
+                    r["KnowledgeTag"].values,
                     r["answerCode"].values,
-                    r["month"].values,
-                    r["dayname"].values,
-                    r["solvesec_600_NA"].values,
                     # r["new_feature"].values,
                 )
             )
@@ -187,9 +146,10 @@ class DKTDataset(torch.utils.data.Dataset):
 
         # 각 data의 sequence length
         seq_len = len(row[0])
-        
-        big_category, mid_category, problem_num, correct, month, dayname, solvesec_600_NA = row
-        cols = [big_category, mid_category, problem_num, correct, month, dayname, solvesec_600_NA]
+
+        test, question, tag, correct = row[0], row[1], row[2], row[3]
+        # test, question, tag, correct, new_feature = row[0], row[1], row[2], row[3], row[4]
+        cate_cols = [test, question, tag, correct]
 
         #test, question, tag, correct, new_feature = row[0], row[1], row[2], row[3], row[4]
         #cate_cols = [test, question, tag, correct, new_feature]
@@ -197,21 +157,21 @@ class DKTDataset(torch.utils.data.Dataset):
 
         # max seq len을 고려하여서 이보다 길면 자르고 아닐 경우 그대로 냅둔다
         if seq_len > self.args.max_seq_len:
-            for i, col in enumerate(cols):
-                cols[i] = col[-self.args.max_seq_len :] # 자르기
+            for i, col in enumerate(cate_cols):
+                cate_cols[i] = col[-self.args.max_seq_len :] # 자르기
             mask = np.ones(self.args.max_seq_len, dtype=np.int16)
         else: # 아니면, 그냥 냅두기
             mask = np.zeros(self.args.max_seq_len, dtype=np.int16)
             mask[-seq_len:] = 1
 
         # mask도 columns 목록에 포함시킴
-        cols.append(mask)
+        cate_cols.append(mask)
 
         # np.array -> torch.tensor 형변환
-        for i, col in enumerate(cols):
-            cols[i] = torch.tensor(col)
+        for i, col in enumerate(cate_cols):
+            cate_cols[i] = torch.tensor(col)
 
-        return cols
+        return cate_cols
 
     def __len__(self):
         return len(self.data)
