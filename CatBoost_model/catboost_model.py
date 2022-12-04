@@ -21,3 +21,15 @@ class CatBoostModel:
     
     def inference(self, X_test):
         return self.model.predict_proba(X_test)[:, 1]
+
+    def gat_feature_importances(self):
+        return self.model.feature_importances_
+
+    def gat_feature_names(self):
+        return self.model.feature_names_
+
+    def gat_best_score(self):
+        return self.model.best_score_
+
+    def gat_best_iter(self):
+        return self.model.best_iteration_

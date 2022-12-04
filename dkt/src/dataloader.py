@@ -45,6 +45,7 @@ class Preprocess:
         np.save(le_path, encoder.classes_)
 
     def __preprocessing(self, df, args, is_train=True):
+        #🙂2. FE할 때 여기 고치세요! 주의할 점 :범주형 변수에 대해서만 추가해주세요
         cate_cols = ["assessmentItemID", "testId", "KnowledgeTag"]
         if args.partial_user: #640명에 대해서 자른다.
             df = df[df['userID'] < 717]
@@ -97,7 +98,7 @@ class Preprocess:
         df = self.__preprocessing(df, args, is_train)
 
         # 추후 feature를 embedding할 시에 embedding_layer의 input 크기를 결정할때 사용
-
+        #🙂3. FE할 때 여기 고치세요! 주의할 점: 2번과정에서 쓴 feature에 대해서만 바꾸세요
         self.args.n_questions = len(
             np.load(os.path.join(self.args.asset_dir, "assessmentItemID_classes.npy"))
         )
@@ -109,8 +110,12 @@ class Preprocess:
         )
 
         df = df.sort_values(by=["userID", "Timestamp"], axis=0)
+        
+        #🙂4. FE할 때 여기 고치세요! 주의할 점: userID와 answerCode 잊지마세요
         columns = ["userID", "assessmentItemID", "testId", "answerCode", "KnowledgeTag"]
         # columns = ['userID', 'assessmentItemID', 'testId', 'answerCode', 'KnowledgeTag','new_feature']
+        
+        #🙂5. FE할 때 여기 고치세요! 주의할 점: answerCode 위치는 4번째에 적어주세요
         group = (
             df[columns]
             .groupby("userID")
@@ -147,31 +152,31 @@ class DKTDataset(torch.utils.data.Dataset):
         # 각 data의 sequence length
         seq_len = len(row[0])
 
+        #🙂6. FE할 때 여기 고치세요! 주의할 점: 5.과정(group) 순서 그대로 적어주세요!
         test, question, tag, correct = row[0], row[1], row[2], row[3]
-        # test, question, tag, correct, new_feature = row[0], row[1], row[2], row[3], row[4]
-        cate_cols = [test, question, tag, correct]
+        cols = [test, question, tag, correct]
 
         #test, question, tag, correct, new_feature = row[0], row[1], row[2], row[3], row[4]
-        #cate_cols = [test, question, tag, correct, new_feature]
+        #cols = [test, question, tag, correct, new_feature]
 
 
         # max seq len을 고려하여서 이보다 길면 자르고 아닐 경우 그대로 냅둔다
         if seq_len > self.args.max_seq_len:
-            for i, col in enumerate(cate_cols):
-                cate_cols[i] = col[-self.args.max_seq_len :] # 자르기
+            for i, col in enumerate(cols):
+                cols[i] = col[-self.args.max_seq_len :] # 자르기
             mask = np.ones(self.args.max_seq_len, dtype=np.int16)
         else: # 아니면, 그냥 냅두기
             mask = np.zeros(self.args.max_seq_len, dtype=np.int16)
             mask[-seq_len:] = 1
 
         # mask도 columns 목록에 포함시킴
-        cate_cols.append(mask)
+        cols.append(mask)
 
         # np.array -> torch.tensor 형변환
-        for i, col in enumerate(cate_cols):
-            cate_cols[i] = torch.tensor(col)
+        for i, col in enumerate(cols):
+            cols[i] = torch.tensor(col)
 
-        return cate_cols
+        return cols
 
     def __len__(self):
         return len(self.data)

@@ -58,7 +58,7 @@ class lightGCN_LQTransformer(nn.Module):
         self.out = nn.Linear(in_features= args.hidden_dim , out_features=1)                                          # feedforward block     ## todo dropout, LayerNorm
         
         # lightGCN embed matrix와 id2index
-        self.embed, self.n_user = self.get_embed()
+        self.embed_matrix, self.n_user = self.get_embed()
         # 다른 임베딩 벡터들과 차원 맞춰주기
         self.lgcn_linear = nn.Linear(CFG.embedding_dim, self.hidden_dim // 3)
     
@@ -104,21 +104,21 @@ class lightGCN_LQTransformer(nn.Module):
         )
         model.to(device)
 
-        embed = model.get_embedding(train_data['edge']).to(device)
+        embed_matrix = model.get_embedding(train_data['edge']).to(device)
         
-        return embed, n_user
+        return embed_matrix, n_user
     
     # 문제 lgcn embedding 구하기
     def lgcn_embedding_question(self, question):
         question = question.detach().cpu().numpy()
-        embed = self.embed.detach().cpu().numpy()
+        embed_matrix = self.embed_matrix.detach().cpu().numpy()
         len_user = self.n_user - 1
 
         question_embed = []
         for user in question:
             user_li = []
             for item in user:
-                user_li.append(embed[len_user + item])
+                user_li.append(embed_matrix[len_user + item])
             question_embed.append(user_li)
 
         question_embed = torch.Tensor(np.array(question_embed))
