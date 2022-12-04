@@ -34,12 +34,20 @@ class lightGCN_LQTransformer(nn.Module):
         self.embedding_test = nn.Embedding(self.args.n_test + 1, self.hidden_dim // 3)
         self.embedding_question = nn.Embedding(self.args.n_questions + 1, self.hidden_dim // 3)
         self.embedding_tag = nn.Embedding(self.args.n_tag + 1, self.hidden_dim // 3)
-
+        self.embedding_big = nn.Embedding(self.args.n_big + 1, self.hidden_dim // 3)
+        self.embedding_mid = nn.Embedding(self.args.n_mid + 1, self.hidden_dim // 3)
+        self.embedding_problem = nn.Embedding(self.args.n_problem + 1, self.hidden_dim // 3)
+        self.embedding_month = nn.Embedding(self.args.n_month + 1, self.hidden_dim // 3)
+        self.embedding_day = nn.Embedding(self.args.n_day + 1, self.hidden_dim // 3)
+        self.embedding_solvesec = nn.Embedding(self.args.n_solvesec + 1, self.hidden_dim // 3)
+        self.embedding_bigacc = nn.Embedding(self.args.n_bigacc + 1, self.hidden_dim // 3)
+        self.embedding_bigstd = nn.Embedding(self.args.n_bigstd + 1, self.hidden_dim // 3)
+        
         # positioal Embedding
         # self.embedding_pos = get_sinusoid_encoding_table(args.max_seq_len, self.hidden_dim)
         # self.embedding_pos =  torch.FloatTensor(self.embedding_pos).to(args.device)
         self.embedding_pos = get_pos(args.max_seq_len).to(args.device)
-        self.comb_proj = nn.Linear((self.hidden_dim // 3) * 4, self.hidden_dim) # 원하는 차원으로 줄이기
+        self.comb_proj = nn.Linear((self.hidden_dim // 3) * 12, self.hidden_dim) # 원하는 차원으로 줄이기
 
         # multihead attention(여기선 head를 1로 두었다.)
         self.multi_en = nn.MultiheadAttention( embed_dim= self.hidden_dim, num_heads= 1, dropout=0.1  )     # multihead attention    ## todo add dropout, LayerNORM
@@ -126,7 +134,7 @@ class lightGCN_LQTransformer(nn.Module):
         return question_embed
 
     def forward(self, input):
-        test, question, tag, _, mask, interaction = input #(test, question, tag, correct, mask, interaction)
+        test, question, tag, _, mask, interaction, big, mid, problem, month, day, solvesec, bigacc, bigstd = input #(test, question, tag, correct, mask, interaction)
 
         # Embedding
         embed_test = self.embedding_test(test)                #shape = (64,20,21)
@@ -143,12 +151,29 @@ class lightGCN_LQTransformer(nn.Module):
         embed_interaction = self.embedding_interaction(interaction) #interaction의 값은 0/1/2 중 하나이다.
         # embed_interaction = nn.Dropout(0.1)(embed_interaction)
 
+        embed_big = self.embedding_big(big)
+        embed_mid = self.embedding_mid(mid)
+        embed_problem = self.embedding_problem(problem)
+        embed_month = self.embedding_month(month)
+        embed_day = self.embedding_day(day)
+        embed_solvesec = self.embedding_solvesec(solvesec)
+        embed_bigacc = self.embedding_bigacc(bigacc)
+        embed_bigstd = self.embedding_bigstd(bigstd)
+        
         embed = torch.cat(
             [
                 embed_interaction,
                 embed_test,
                 embed_question,
                 embed_tag,
+                embed_big,
+                embed_mid,
+                embed_problem,
+                embed_month,
+                embed_day,
+                embed_solvesec,
+                embed_bigacc,
+                embed_bigstd
             ],
             2,
         )

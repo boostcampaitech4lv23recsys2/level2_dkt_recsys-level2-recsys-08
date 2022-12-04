@@ -195,7 +195,8 @@ def get_model(args):
 # 배치 전처리
 def process_batch(batch):
 
-    test, question, tag, correct, mask = batch
+    # test, question, tag, correct, solvesec, mask = batch
+    test, question, tag, correct, big, mid, problem, month, day, solvesec, bigacc, bigstd, mask = batch
     # test, question, tag, correct, new_feature, mask = batch
 
     # change to float
@@ -213,10 +214,21 @@ def process_batch(batch):
     test = ((test + 1) * mask).int()
     question = ((question + 1) * mask).int()
     tag = ((tag + 1) * mask).int()
-    # new_feature = ((new_feature + 1) * mask).int()
     
-
-    return (test, question, tag, correct, mask, interaction)
+    # new_feature = ((new_feature + 1) * mask).int()
+    # big, mid, problem, month, day 
+    
+    big = ((big + 1) * mask).int()
+    mid = ((mid + 1) * mask).int()
+    problem = ((problem + 1) * mask).int()
+    month = ((month + 1) * mask).int()
+    day = ((day + 1) * mask).int()
+    solvesec = ((solvesec + 1) * mask).int()
+    bigacc = ((bigacc + 1) * mask).int()
+    bigstd = ((bigstd + 1) * mask).int()
+    
+    # return (test, question, tag, correct, mask, interaction, solvesec)
+    return (test, question, tag, correct, mask, interaction, big, mid, problem, month, day, solvesec, bigacc, bigstd)
     # return (test, question, tag, correct, mask, interaction, new_feature)
 
 

@@ -45,7 +45,8 @@ class Preprocess:
         np.save(le_path, encoder.classes_)
 
     def __preprocessing(self, df, args, is_train=True):
-        cate_cols = ["assessmentItemID", "testId", "KnowledgeTag"]
+        # cate_cols = ["assessmentItemID", "testId", "KnowledgeTag", "solvesec_3600"]
+        cate_cols = ["assessmentItemID", "testId", "KnowledgeTag", "big_category", "mid_category", "problem_num", "month", "dayname", "solvesec_3600", "big_category_acc", "big_category_std"]
         if args.partial_user: #640명에 대해서 자른다.
             df = df[df['userID'] < 717]
         if not os.path.exists(self.args.asset_dir):
@@ -83,8 +84,29 @@ class Preprocess:
         return df
 
     def __feature_engineering(self, df):
+        day_dict = {'Tuesday': 0,
+                    'Thursday': 1,
+                    'Monday': 2,
+                    'Saturday': 3,
+                    'Friday': 4,
+                    'Wednesday': 5,
+                    'Sunday': 6}
+        df['month'] = pd.to_datetime(df.Timestamp).dt.month
+        df['dayname'] = pd.to_datetime(df.Timestamp).dt.day_name().map(day_dict)
+        df['big_category'] = df.testId.map(lambda x:x[2]).astype(int)
+        df['problem_num'] = df.assessmentItemID.map(lambda x: int(x[-3:]))
+        df['mid_category'] = df.testId.map(lambda x: int(x[-3:]))
         
-
+        df['Timestamp2'] = pd.to_datetime(df.Timestamp)
+        df['solvetime'] = df.groupby('userID')['Timestamp2'].diff()
+        df['solvesec'] = df.solvetime.map(lambda x : x.total_seconds())
+        df['solvesec_3600'] = df.solvesec
+        df.loc[df.solvesec>=3600,'solvesec_3600']=3600
+        
+        big_category_answermean = dict(df.groupby("big_category").answerCode.mean())
+        big_category_answerstd = dict(df.groupby("big_category").answerCode.std())
+        df['big_category_acc'] = df.big_category.map(big_category_answermean)
+        df['big_category_std'] = df.big_category.map(big_category_answerstd)
 
         return df
 
@@ -107,9 +129,34 @@ class Preprocess:
         self.args.n_tag = len(
             np.load(os.path.join(self.args.asset_dir, "KnowledgeTag_classes.npy"))
         )
-
+        self.args.n_big = len(
+            np.load(os.path.join(self.args.asset_dir, "big_category_classes.npy"))
+        )
+        self.args.n_mid = len(
+            np.load(os.path.join(self.args.asset_dir, "mid_category_classes.npy"))
+        )
+        self.args.n_problem = len(
+            np.load(os.path.join(self.args.asset_dir, "problem_num_classes.npy"))
+        )
+        self.args.n_month = len(
+            np.load(os.path.join(self.args.asset_dir, "month_classes.npy"))
+        )
+        self.args.n_day = len(
+            np.load(os.path.join(self.args.asset_dir, "dayname_classes.npy"))
+        )
+        self.args.n_solvesec = len(
+            np.load(os.path.join(self.args.asset_dir, "solvesec_3600_classes.npy"))
+        )
+        self.args.n_bigacc = len(
+            np.load(os.path.join(self.args.asset_dir, "big_category_acc_classes.npy"))
+        )
+        self.args.n_bigstd = len(
+            np.load(os.path.join(self.args.asset_dir, "big_category_std_classes.npy"))
+        )
+        
         df = df.sort_values(by=["userID", "Timestamp"], axis=0)
-        columns = ["userID", "assessmentItemID", "testId", "answerCode", "KnowledgeTag"]
+        # columns = ["userID", "assessmentItemID", "testId", "answerCode", "KnowledgeTag", "solvesec_3600"]
+        columns = ["userID", "assessmentItemID", "testId", "answerCode", "KnowledgeTag", "big_category", "mid_category", "problem_num", "month", "dayname", "solvesec_3600", "big_category_acc", "big_category_std"]
         # columns = ['userID', 'assessmentItemID', 'testId', 'answerCode', 'KnowledgeTag','new_feature']
         group = (
             df[columns]
@@ -120,6 +167,14 @@ class Preprocess:
                     r["assessmentItemID"].values,
                     r["KnowledgeTag"].values,
                     r["answerCode"].values,
+                    r["big_category"].values,
+                    r["mid_category"].values,
+                    r["problem_num"].values,
+                    r["month"].values,
+                    r["dayname"].values,
+                    r["solvesec_3600"].values,
+                    r["big_category_acc"].values,
+                    r["big_category_std"].values,
                     # r["new_feature"].values,
                 )
             )
@@ -147,9 +202,12 @@ class DKTDataset(torch.utils.data.Dataset):
         # 각 data의 sequence length
         seq_len = len(row[0])
 
-        test, question, tag, correct = row[0], row[1], row[2], row[3]
+        # test, question, tag, correct, solvesec = row[0], row[1], row[2], row[3], row[4]
+        test, question, tag, correct, big, mid, problem, month, day, solvesec, bigacc, bigstd = row[0], row[1], row[2], row[3], row[4], row[5], row[6], row[7], row[8], row[9], row[10], row[11]
         # test, question, tag, correct, new_feature = row[0], row[1], row[2], row[3], row[4]
-        cate_cols = [test, question, tag, correct]
+        
+        # cate_cols = [test, question, tag, correct, solvesec]
+        cate_cols = [test, question, tag, correct, big, mid, problem, month, day, solvesec, bigacc, bigstd]
 
         #test, question, tag, correct, new_feature = row[0], row[1], row[2], row[3], row[4]
         #cate_cols = [test, question, tag, correct, new_feature]
