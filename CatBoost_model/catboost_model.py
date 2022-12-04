@@ -27,3 +27,9 @@ class CatBoostModel:
 
     def gat_feature_names(self):
         return self.model.feature_names_
+
+    def gat_best_score(self):
+        return self.model.best_score_
+
+    def gat_best_iter(self):
+        return self.model.best_iteration_
