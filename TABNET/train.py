@@ -4,21 +4,26 @@ import pandas as pd
 import torch
 import random
 import matplotlib.pyplot as plt
+import mlflow
 
 import time
 from datetime import datetime
 from pytz import timezone
 import wandb
 
+from PIL import Image
 from args import parse_args
 
-from utils import seed_everything, plot_explain, data_load
+from utils import seed_everything, plot_explain, data_load, mlflow_image
 from data import categorical_feature,assess_count,\
     feature_engineering,custom_train_test_split,percentile,time_feature_engineering
 
 from sklearn.metrics import roc_auc_score
 from sklearn.metrics import accuracy_score
 from pytorch_tabnet.tab_model import TabNetClassifier, TabNetRegressor
+from pytorch_tabnet.callbacks import Callback
+
+from mlflow_util import MLCallback,connect_server
 
 def main(args):
     # wandb + seed 고정
@@ -26,8 +31,11 @@ def main(args):
     seed_everything(args.SEED)
 
     wandb.init(project="TabNet", entity = "recsys8", config=vars(args))
-    wandb.run.name = "TabNet_test" # 표시되는 이름을 바꾸고 싶다면 해당 줄을 바꿔주세요
+    wandb.run.name = "TabNet_test"
     wandb.run.save()
+
+    now = datetime.now(tz = timezone('Asia/Seoul'))
+    date_str = now.strftime('%m-%d-%H:%M:%S')
 
     cat_features = ['userID','assessmentItemID','testId','KnowledgeTag','assess_count']
     # data load
@@ -75,6 +83,14 @@ def main(args):
         lambda_sparse = args.LAMBDA,
         clip_value = args.CLIP,
     )
+
+    # mlflow 연결
+    remote_server_uri,experiment_id = connect_server()
+    ml_callback = MLCallback
+    run_name="tabent"+date_str
+    desc="tabnet emergency"
+    mlflow.end_run()
+
     # model 학습
     model.fit(
         X_train = train_set.drop(columns = 'answerCode').values,
@@ -88,12 +104,12 @@ def main(args):
         virtual_batch_size = args.VIRTUAL_BS,
         num_workers = 0,
         weights = 1,
-        drop_last = False
+        drop_last = False,
+        callbacks=[ml_callback(remote_server_uri, experiment_id, run_name, desc,model.get_params())]
+        
     )
     
     # model 저장
-    now = datetime.now(tz = timezone('Asia/Seoul'))
-    date_str = now.strftime('%m-%d %H:%M:%S')
     saving_path_name = "./saved/tabnet_" + date_str
     model.save_model(saving_path_name)
 
@@ -104,25 +120,24 @@ def main(args):
     valid_acc = accuracy_score(valid_set['answerCode'],valid_preds)
 
     # wandb logging
-    explain,masks = model.explain(valid_set.drop(columns = 'answerCode').values)
-
-    for i in range(args.N_EPOCHS):
+    for i in range(len(model.history['valid_auc'])):
         wandb.log({
             'epoch' : i,
+            'loss' : model.history['loss'][i],
             'valid_auc' : model.history['valid_auc'][i],
             'valid_acc' : model.history['valid_accuracy'][i],
         },step = i)
 
-    # wandb.run.summary['best_auc'] = valid_auc
-    # wandb.run.summary['best_acc'] = valid_acc
-    # wandb.run.summary['Explain'] = wandb.Image(explain.T,caption = "Explain")
-    # wandb.run.summary['Mask[0]'] = wandb.Image(masks[0].T,caption = "Mask[0]")
-    # wandb.run.summary['Mask[1]'] = wandb.Image(masks[1].T,caption = "Mask[1]")
-    # wandb.run.summary['Mask[2]'] = wandb.Image(masks[2].T,caption = "Mask[2]")
+    wandb.run.summary['best_auc'] = valid_auc
+    wandb.run.summary['best_acc'] = valid_acc
+
+    # mlflow image logging
+    explain,masks = model.explain(valid_set.drop(columns = 'answerCode').values)
+    mlflow_image(explain,masks,FEATS,experiment_id)
     
 
     # submission 저장
-    total_preds = model.predict(test[FEATS].drop(columns = 'answerCode').values)
+    total_preds = model.predict_proba(test[FEATS].drop(columns = 'answerCode').values)[:,1]
     submission = pd.read_csv('../../data/sample_submission.csv')
     submission['prediction'] = total_preds
     submission.to_csv('./submission/submission'+date_str+'.csv')

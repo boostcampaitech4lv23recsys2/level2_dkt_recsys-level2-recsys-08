@@ -4,6 +4,8 @@ import pandas as pd
 import torch
 import random
 import matplotlib.pyplot as plt
+import mlflow
+from PIL import Image
 from sklearn.preprocessing import LabelEncoder
 
 def seed_everything(seed_value):
@@ -32,9 +34,25 @@ def plot_explain(explain,FEATS):
             pcm = ax.pcolor(explain[i],vmin = 0, vmax = 1)
             ax.set_xticks(np.arange(len(FEATS[:-1]))+0.5)
             ax.set_xticklabels(FEATS[:-1], rotation=45, ha='right')
+        plt.savefig('./temp')
     else :
         fig, ax = plt.subplots(1,1,figsize = (10,5))
 
         pcm = ax.pcolor(explain,vmin = 0, vmax = 1)
         ax.set_xticks(np.arange(len(FEATS[:-1]))+0.5)
         ax.set_xticklabels(FEATS[:-1], rotation=45, ha='right')
+        plt.savefig('./temp')
+
+def mlflow_image(explain,masks,FEATS,experiment_id):
+    a = []
+    a.append(explain)
+    for i in range(3):
+        a.append(masks[i])
+    b = ['explain','mask0','mask1','mask2']
+    run_id = mlflow.last_active_run().info.run_id
+    for img,name in zip(a,b):
+        plot_explain(img,FEATS)
+        image = Image.open('./temp.png')
+        run_id = mlflow.last_active_run().info.run_id
+        with mlflow.start_run(run_id = run_id,experiment_id = experiment_id):
+            mlflow.log_image(image, name+'.png')
