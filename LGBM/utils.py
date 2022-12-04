@@ -60,6 +60,7 @@ def lgbm_predict(test_df, model, FEATS, submission):
         w.write("id,prediction\n")
         for id, p in enumerate(total_preds):
             w.write('{},{}\n'.format(id,p))
+    return total_preds
 
 
 def post_slack(message):
