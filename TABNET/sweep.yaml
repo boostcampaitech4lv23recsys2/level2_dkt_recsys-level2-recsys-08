@@ -1,0 +1,64 @@
+program : train.py
+entity : recsys8
+project : TabNet
+# 고정
+
+method : grid 
+name : TABNET_Sweep 
+
+metric :
+  name : valid_auc
+  goal : maximize
+
+parameters :
+  DATA_PATH : 
+    value : "../../data/"
+# 학습 파라미터
+  SEED : 
+    value : 42
+  N_EPOCHS : 
+    value : 20
+    # values : []
+  BATCH_SZ :
+    value : 1024
+  PATIENCE :
+    value : 3
+  VIRTUAL_BS :
+    value : 128
+# 모델 내 파라미터
+  LR :
+    # value : 0.01
+    values : [0.01]
+
+  ND :
+    value : 8
+
+  NA : 
+    value : 8  
+
+  N_STEPS :
+    value : 3 
+
+  GAMMA : 
+    values : [1.3,1.5]
+
+  N_INDEPENDENT :
+    value : 2 
+
+  LAMBDA : 
+    values : [0,0.001] 
+
+  N_SHARED : 
+    value : 2
+
+  MOMENTUM : 
+    value : 0.1
+
+  CLIP :
+    value : 1.0
+
+  CAT_EMB_DIM :
+    values : [4,8]
+
+  
+  
