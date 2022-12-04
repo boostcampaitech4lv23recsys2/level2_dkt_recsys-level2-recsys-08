@@ -3,6 +3,7 @@ import os
 
 import torch
 import wandb
+import mlflow
 
 from .criterion import get_criterion
 from .dataloader import get_loaders
@@ -51,6 +52,7 @@ def run(args, train_data, valid_data, model):
                 "valid_acc_epoch": acc,
             },step = epoch
         )
+
         if auc > best_auc:
             best_auc = auc
             # torch.nn.DataParallel로 감싸진 경우 원래의 model을 가져옵니다.
@@ -75,6 +77,11 @@ def run(args, train_data, valid_data, model):
         # scheduler
         if args.scheduler == "plateau":
             scheduler.step(best_auc)
+
+        mlflow.log_metric("VAL AUC",best_auc)
+        mlflow.log_metric("VAL ACC",acc)
+        mlflow.log_metric("TRAIN AUC",train_auc)
+    mlflow.pytorch.log_model(model, artifact_path="model") # 모델 기록
 
 
 def train(train_loader, model, optimizer, scheduler, args):
