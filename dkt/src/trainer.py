@@ -53,10 +53,6 @@ def run(args, train_data, valid_data, model):
             },step = epoch
         )
 
-        mlflow.log_metric("VAL AUC",auc)
-        mlflow.log_metric("VAL ACC",acc)
-        mlflow.log_metric("TRAIN AUC",train_auc)
-
         if auc > best_auc:
             best_auc = auc
             # torch.nn.DataParallel로 감싸진 경우 원래의 model을 가져옵니다.
@@ -81,6 +77,10 @@ def run(args, train_data, valid_data, model):
         # scheduler
         if args.scheduler == "plateau":
             scheduler.step(best_auc)
+
+        mlflow.log_metric("VAL AUC",best_auc)
+        mlflow.log_metric("VAL ACC",acc)
+        mlflow.log_metric("TRAIN AUC",train_auc)
 
     mlflow.pytorch.log_model(model, artifact_path="model") # 모델 기록
 
@@ -202,6 +202,7 @@ def get_model(args):
 # 배치 전처리
 def process_batch(batch):
 
+    #🙂5. FE할 때 여기 고치세요! 주의할 점 : 4번과정과 비슷한데, 끝에 mask 추가해주세요!
     big_category, mid_category, problem_num, correct, month, dayname, solvesec_600_NA, mask = batch
     # test, question, tag, correct, new_feature, mask = batch
 
@@ -216,16 +217,17 @@ def process_batch(batch):
     interaction_mask[:, 0] = 0
     interaction = (interaction * interaction_mask).to(torch.int64)
 
-    #  test_id, question_id, tag
-    test = ((big_category + 1) * mask).int()
-    question = ((mid_category + 1) * mask).int()
-    tag = ((problem_num + 1) * mask).int()
-    tag = ((month + 1) * mask).int()
-    tag = ((dayname + 1) * mask).int()
-    tag = ((solvesec_600_NA + 1) * mask).int()
+    #🙂6. FE할 때 여기 고치세요! 주의할 점 : answerCode를 나타내는 correct와 mask는 빼고 해주세요!
+    # # 다른 columns도 masking하고, masking한 0과 실제 0의 값을 구분위해+1        
+    big_category = ((big_category + 1) * mask).int()
+    mid_category = ((mid_category + 1) * mask).int()
+    problem_num = ((problem_num + 1) * mask).int()
+    month = ((month + 1) * mask).int()
+    dayname = ((dayname + 1) * mask).int()
+    solvesec_600_NA = ((solvesec_600_NA + 1) * mask).int()
     # new_feature = ((new_feature + 1) * mask).int()
     
-
+    #🙂7. FE할 때 여기 고치세요! 주의할 점 : 5번과정과 비슷한데, 끝에 interaction을 붙여주세요!
     return (big_category, mid_category, problem_num, correct, month, dayname, solvesec_600_NA, mask, interaction)
     # return (test, question, tag, correct, mask, interaction, new_feature)
 

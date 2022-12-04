@@ -14,6 +14,7 @@ def main(args):
     wandb.login()
     setSeeds(args.seed)
     args.device = "cuda" if torch.cuda.is_available() else "cpu"
+
     preprocess = Preprocess(args)
     preprocess.load_train_data(args)
     train_data = preprocess.get_train_data()  #shape = (6698, 4, interaction수_가변적)  
@@ -50,8 +51,18 @@ if __name__ == "__main__":
     run = client.create_run(experiment.experiment_id)
     run_name = "🌈(12/04 Sun)["+args.model+"] 피처: 6개)"
 
-    with mlflow.start_run(run_id=run.info.run_id, run_name=run_name):
-        # mlflow.set_tag('mlflow.user', 'test')
+    #🙂1. FE할 때 여기 고치세요!
+    args.base_cols = ['userID','Timestamp','answerCode']
+    args.cat_cols = ['big_category','mid_category','problem_num', 'month', 'dayname']
+    args.num_cols = ['solvesec_600']
+    args.train_df_csv = "/opt/ml/input/main_dir/dkt/asset/train_fe_df.csv"
+    args.test_df_csv = "/opt/ml/input/main_dir/dkt/asset/test_fe_df.csv"
+
+    desc = '사용한 피처 :' + ', '.join(args.cat_cols + args.num_cols)
+
+    with mlflow.start_run(run_name="tmp", run_id=run.info.run_id, description=desc):
+        mlflow.set_tag("mlflow.runName", run_name)
+        mlflow.set_tag('mlflow.user', 'lnh')
         params = {"lr":args.lr,
                   "epoch":args.n_epochs,
                   "hidden_dim":args.hidden_dim,

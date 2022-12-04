@@ -46,7 +46,7 @@ class Preprocess:
 
     def __preprocessing(self, df, args, is_train=True):
         # cate_cols = ["assessmentItemID", "testId", "KnowledgeTag"]
-        cate_cols = ['big_category', 'mid_category', 'problem_num', 'month', 'dayname']
+        cate_cols = args.cat_cols
         if args.partial_user: #640명에 대해서 자른다.
             df = df[df['userID'] < 717]
         if not os.path.exists(self.args.asset_dir):
@@ -84,56 +84,28 @@ class Preprocess:
         return df
 
 
-    def __feature_engineering(self, df):
-        
-        day_dict = {'Tuesday': 0,
-        'Thursday': 1,
-        'Friday': 2,
-        'Wednesday' : 3,
-        'Monday': 4,
-        'Saturday': 5,
-        'Sunday': 6}
+    def __feature_engineering(self, df, args, is_train):
+        if is_train == True and args.train_df_csv:
+            df = pd.read_csv(args.train_df_csv)
+            return df[args.base_cols + args.cat_cols + args.num_cols]
+        elif is_train == False and args.test_df_csv:
+            df = pd.read_csv(args.test_df_csv)
+            return df[args.base_cols + args.cat_cols + args.num_cols]
 
-        df2 = df.copy()
-        #유저별 시퀀스를 고려하기 위해 아래와 같이 정렬
-        df2.sort_values(by=['userID','Timestamp'], inplace=True)
-        
-        df2['big_category'] = df2.testId.map(lambda x:x[2]).astype(int)
-        df2['mid_category'] = df2.testId.map(lambda x: int(x[-3:]))
-        df2['problem_num'] = df2.assessmentItemID.map(lambda x: int(x[-3:]))
-        
-        df2['month'] = pd.to_datetime(df2.Timestamp).dt.month
-        correct_m = df2.groupby(['month'])['answerCode'].agg(['mean'])
-        correct_m.columns = ['month_mean']
-        df2 = pd.merge(df2, correct_m, on=['month'], how="left")
-        
-        df2['dayname'] = pd.to_datetime(df2.Timestamp).dt.day_name().map(day_dict)
-        
-        df2['Timestamp_start'] = pd.to_datetime(df['Timestamp'])
-        df2['Timestamp_fin'] = df2.groupby('userID')['Timestamp_start'].shift(-1)
-        df2['solvetime'] = df2.Timestamp_fin - df2.Timestamp_start
-        df2['solvesec_600_NA'] = df2.solvetime.map(lambda x : x.total_seconds()).shift(1).fillna(0)
-        df2.loc[df2.solvesec_600_NA>=600,'solvesec_600_NA']=0
-        
-        return df2[['userID', 'Timestamp', 'answerCode', 'big_category', 'mid_category',\
-                    'problem_num', 'month', 'dayname', 'solvesec_600_NA']]
-        # return df
+        return df
 
     def load_data_from_file(self, args, file_name, is_train=True):
         csv_file_path = os.path.join(self.args.data_dir, file_name)
         df = pd.read_csv(csv_file_path)  # , nrows=100000)
         if is_train == True:
             df = df[df['answerCode'] != -1]
-        df = self.__feature_engineering(df)
+        df = self.__feature_engineering(df, args, is_train)
         df = self.__preprocessing(df, args, is_train)
 
         # 추후 feature를 embedding할 시에 embedding_layer의 input 크기를 결정할때 사용
 
-        self.args.n_big_category = df['big_category'].nunique()
-        self.args.n_mid_category = df['mid_category'].nunique()
-        self.args.n_problem_num = df['problem_num'].nunique()
-        self.args.n_month = df['month'].nunique()
-        self.args.n_dayname = df['dayname'].nunique()
+        for col in args.cat_cols:
+            exec("self.args.n_" + col + '= df["' + col + '"].nunique()')
 
         # self.args.n_questions = len(
         #     np.load(os.path.join(self.args.asset_dir, "assessmentItemID_classes.npy"))
@@ -146,9 +118,13 @@ class Preprocess:
         # )
 
         df = df.sort_values(by=["userID", "Timestamp"], axis=0)
+        
+        #🙂2. FE할 때 여기 고치세요! 주의할 점 : userID와 answerCode 잊지마세요
         columns = ['userID', 'big_category', 'mid_category',\
-                    'problem_num', 'answerCode', 'month', 'dayname', 'solvesec_600_NA']
+                    'problem_num', 'answerCode', 'month', 'dayname', 'solvesec_600']
         # columns = ['userID', 'assessmentItemID', 'testId', 'answerCode', 'KnowledgeTag','new_feature']
+        
+        #🙂3. FE할 때 여기 고치세요! 주의할 점 : answerCode 위치는 4번째에 적어주세요
         group = (
             df[columns]
             .groupby("userID")
@@ -160,7 +136,7 @@ class Preprocess:
                     r["answerCode"].values,
                     r["month"].values,
                     r["dayname"].values,
-                    r["solvesec_600_NA"].values,
+                    r["solvesec_600"].values,
                     # r["new_feature"].values,
                 )
             )
@@ -188,11 +164,12 @@ class DKTDataset(torch.utils.data.Dataset):
         # 각 data의 sequence length
         seq_len = len(row[0])
         
-        big_category, mid_category, problem_num, correct, month, dayname, solvesec_600_NA = row
-        cols = [big_category, mid_category, problem_num, correct, month, dayname, solvesec_600_NA]
+        #🙂4. FE할 때 여기 고치세요! 주의할 점 : 3.과정(group) 순서 그대로 적어주세요!
+        big_category, mid_category, problem_num, correct, month, dayname, solvesec_600 = row
+        cols = [big_category, mid_category, problem_num, correct, month, dayname, solvesec_600]
 
         #test, question, tag, correct, new_feature = row[0], row[1], row[2], row[3], row[4]
-        #cate_cols = [test, question, tag, correct, new_feature]
+        #cols = [test, question, tag, correct, new_feature]
 
 
         # max seq len을 고려하여서 이보다 길면 자르고 아닐 경우 그대로 냅둔다
