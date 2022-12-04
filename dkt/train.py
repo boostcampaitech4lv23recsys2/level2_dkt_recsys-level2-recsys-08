@@ -50,7 +50,8 @@ if __name__ == "__main__":
     run = client.create_run(experiment.experiment_id)
     run_name = "🌈(12/04 Sun)["+args.model+"] 피처: ?개)"
 
-    columns = []
+    #🙂1. FE할 때 여기 고치세요!
+    columns = ["assessmentItemID", "testId", "KnowledgeTag"]
     desc = '사용한 피처 :' + ', '.join(columns)
 
     with mlflow.start_run(run_id=run.info.run_id, run_name=run_name, description=desc):
