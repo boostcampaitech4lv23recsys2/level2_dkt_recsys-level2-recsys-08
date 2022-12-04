@@ -1,6 +1,7 @@
 import os
 
 import torch
+import mlflow
 import wandb
 from args import parse_args
 from src import trainer
@@ -35,4 +36,30 @@ def main(args):
 if __name__ == "__main__":
     args = parse_args()
     os.makedirs(args.model_dir, exist_ok=True)
-    main(args)
+
+    # config = ConfigParser.from_args(args)
+    remote_server_uri ="http://118.67.134.110:30005"
+    mlflow.set_tracking_uri(remote_server_uri)
+    
+    experiment_name = args.model
+    experiment = mlflow.get_experiment_by_name(experiment_name)
+    if experiment == None:
+        experiment = mlflow.set_experiment(experiment_name)
+    client = mlflow.tracking.MlflowClient()
+    
+    run = client.create_run(experiment.experiment_id)
+    run_name = "🌈(12/04 Sun)["+args.model+"] 피처: 6개)"
+
+    with mlflow.start_run(run_id=run.info.run_id, run_name=run_name):
+        # mlflow.set_tag('mlflow.user', 'test')
+        params = {"lr":args.lr,
+                  "epoch":args.n_epochs,
+                  "hidden_dim":args.hidden_dim,
+                  "seq_len":args.max_seq_len,
+                  "batch":args.batch_size,
+                  "drop_out":args.drop_out,
+                  "patience":args.patience,
+                  }
+        mlflow.log_params(params)
+
+        main(args)
