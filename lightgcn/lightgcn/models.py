@@ -2,6 +2,7 @@ import os
 
 import numpy as np
 import torch
+import mlflow
 from sklearn.metrics import accuracy_score, roc_auc_score
 from torch_geometric.nn.models import LightGCN
 from .utils import setSeeds
@@ -85,6 +86,12 @@ def train(
                 wandb.log(dict(best_auc=best_auc))
                 wandb.run.summary['best_auc'] = best_auc
                 
+            mlflow.log_metric("BEST AUC",best_auc)
+            mlflow.log_metric("ACC",acc)
+            mlflow.log_metric("AUC",auc)
+            mlflow.log_metric("LOSS",loss)
+        mlflow.pytorch.log_model(model, artifact_path="model") # 모델 기록
+    
     torch.save(
         {"model": model.state_dict(), "epoch": e + 1},
         os.path.join(weight, f"last_model.pt"),
