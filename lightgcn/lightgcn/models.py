@@ -3,12 +3,17 @@ import os
 import numpy as np
 import torch
 import mlflow
+import argparse
 from sklearn.metrics import accuracy_score, roc_auc_score
 from torch_geometric.nn.models import LightGCN
 from .utils import setSeeds
 
-def build(n_node, weight=None, logger=None, **kwargs):
+def build(args, n_node, weight=None, logger=None, **kwargs):
     model = LightGCN(n_node, **kwargs)
+    
+    # if args.item_node != "assessmentItemID":
+    #     weight = "./weight/" + args.item_node + "_best_model.pt"
+        
     if weight:
         if not os.path.isfile(weight):
             logger.fatal("Model Weight File Not Exist")
@@ -21,7 +26,7 @@ def build(n_node, weight=None, logger=None, **kwargs):
         return model
 
 
-def train(
+def train(args,
     model,
     train_data,
     valid_data=None,
@@ -74,13 +79,19 @@ def train(
         if weight:
             if auc > best_auc:
                 logger.info(
-                    f" * In epoch {(e+1):04}, loss={loss:.03f}, acc={acc:.03f}, AUC={auc:.03f}, Best AUC"
+                    f" * In epoch {(e+1):04}, loss={loss:.03f}, acc={acc:.03f}, AUC={auc:.03f}, ✨Best AUC✨"
                 )
                 best_auc, best_epoch = auc, e
-                torch.save(
-                    {"model": model.state_dict(), "epoch": e + 1},
-                    os.path.join(weight, f"best_model.pt"),
-                )
+                if args.item_node != "assessmentItemID":
+                    torch.save(
+                        {"model": model.state_dict(), "epoch": e + 1},
+                        os.path.join(weight, args.item_node + "_best_model.pt"),
+                    )
+                else:
+                    torch.save(
+                        {"model": model.state_dict(), "epoch": e + 1},
+                        os.path.join(weight, f"best_model.pt"),
+                        )
 
             if use_wandb:
                 wandb.log(dict(best_auc=best_auc))

@@ -1,6 +1,7 @@
 import pandas as pd
 import torch
 import mlflow
+import argparse
 from config import CFG, logging_conf
 from lightgcn.datasets import prepare_dataset
 from lightgcn.models import build, train
@@ -20,17 +21,17 @@ device = torch.device("cuda" if use_cuda else "cpu")
 print(f'device : {device}')
 
 
-def main():
+def main(args):
     logger.info("Task Started")
 
     logger.info("[1/1] Data Preparing - Start")
-    train_data, test_data, n_node = prepare_dataset(
+    train_data, test_data, n_node = prepare_dataset(args,
         device, CFG.basepath, verbose=CFG.loader_verbose, logger=logger.getChild("data")
     )
     logger.info("[1/1] Data Preparing - Done")
 
     logger.info("[2/2] Model Building - Start")
-    model = build(
+    model = build(args,
         n_node,
         embedding_dim=CFG.embedding_dim,
         num_layers=CFG.num_layers,
@@ -46,7 +47,7 @@ def main():
     logger.info("[2/2] Model Building - Done")
 
     logger.info("[3/3] Model Training - Start")
-    train(
+    train(args,
         model,
         train_data,
         n_epoch=CFG.n_epoch,
@@ -61,6 +62,13 @@ def main():
 
 
 if __name__ == "__main__":
+    parser = argparse.ArgumentParser(description='parser')
+    arg = parser.add_argument
+    
+    parser.add_argument("--item_node", default="assessmentItemID", type=str, help="item node")
+    # parser.add_argument("--item_node", default="testId", type=str, help="item node")
+    
+    args = parser.parse_args()
     
     remote_server_uri ="http://118.67.134.110:30005"
     mlflow.set_tracking_uri(remote_server_uri)
@@ -72,10 +80,10 @@ if __name__ == "__main__":
     client = mlflow.tracking.MlflowClient()
     
     run = client.create_run(experiment.experiment_id)
-    run_name = "🌈(12/05 Mon)[lightGCN]"
+    run_name = "🌈(12/05 Mon)[lightGCN_" + args.item_node + "]"
 
     #🙂1. FE할 때 여기 고치세요!
-    columns = ["assessmentItemID"]
+    columns = [args.item_node]
     desc = '사용한 피처 :' + ', '.join(columns)
 
     with mlflow.start_run(run_id=run.info.run_id, run_name=run_name, description=desc):
@@ -88,4 +96,4 @@ if __name__ == "__main__":
                   }
         mlflow.log_params(params)
 
-        main()
+        main(args)
