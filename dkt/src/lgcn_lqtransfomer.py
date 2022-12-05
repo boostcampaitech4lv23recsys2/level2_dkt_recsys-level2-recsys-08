@@ -6,14 +6,15 @@ import pandas as pd
 import numpy as np
 import copy
 from .lqtransformer import get_sinusoid_encoding_table, get_pos, Feed_Forward_block
+from .get_embed import get_embed
 
 import sys
 sys.path.append(os.path.dirname(os.path.abspath(os.path.dirname(os.path.abspath(os.path.dirname(__file__))))))
 
 from lightgcn.config import CFG, logging_conf
-from lightgcn.lightgcn.models import build, train, inference
+# from lightgcn.lightgcn.models import build, train, inference
 from lightgcn.lightgcn.utils import class2dict, get_logger
-from lightgcn.lightgcn.datasets import load_data, separate_data, process_data
+# from lightgcn.lightgcn.datasets import load_data, separate_data, process_data
 
 
 logger = get_logger(logging_conf)
@@ -58,84 +59,115 @@ class lightGCN_LQTransformer(nn.Module):
         self.out = nn.Linear(in_features= args.hidden_dim , out_features=1)                                          # feedforward block     ## todo dropout, LayerNorm
         
         # lightGCN embed matrix와 id2index
-        self.embed_matrix, self.n_user = self.get_embed()
-        # 다른 임베딩 벡터들과 차원 맞춰주기
-        self.lgcn_linear = nn.Linear(CFG.embedding_dim, self.hidden_dim // 3)
-    
-    ### lightGCN 모델 데이터셋 준비
-    def indexing_data(self, data):
-        userid, itemid = (
-            sorted(list(set(data.userID))),
-            sorted(list(set(data.assessmentItemID))),
-        )
-        n_user, n_item = len(userid), len(itemid)
-
-        userid_2_index = {v: i for i, v in enumerate(userid)}
-        itemid_2_index = {v: i + n_user for i, v in enumerate(itemid)}
-        id_2_index = dict(userid_2_index, **itemid_2_index)
-
-        return n_user, id_2_index
-
-    def prepare_dataset(self, device, basepath, verbose=True, logger=None):
+        self.test_embed_matrix, self.test_n_user = get_embed('testId')
+        self.question_embed_matrix, self.question_n_user = get_embed('assessmentItemID')
         
-        data = load_data(basepath)
-        train_data, test_data = separate_data(data)
-        n_user, id2index = self.indexing_data(data)
-        train_data_proc = process_data(train_data, id2index, device)
-        test_data_proc = process_data(test_data, id2index, device)
+        # 다른 임베딩 벡터들과 차원 맞춰주기
+        ## assessmentItemID
+        self.lgcn_linear = nn.Linear(CFG.embedding_dim, self.hidden_dim // 3)
+        ## testId
+        self.lgcn_linear_test = nn.Linear(CFG.embedding_dim, self.hidden_dim // 3)
+        
+    ### lightGCN 모델 데이터셋 준비
+    # def indexing_data(self, data):
+    #     userid, itemid = (
+    #         sorted(list(set(data.userID))),
+    #         sorted(list(set(data.assessmentItemID))),
+    #     )
+    #     n_user, n_item = len(userid), len(itemid)
 
-        return train_data_proc, test_data_proc, len(id2index), n_user
+    #     userid_2_index = {v: i for i, v in enumerate(userid)}
+    #     itemid_2_index = {v: i + n_user for i, v in enumerate(itemid)}
+    #     id_2_index = dict(userid_2_index, **itemid_2_index)
+
+    #     return n_user, id_2_index
+
+    # def prepare_dataset(self, device, basepath, verbose=True, logger=None):
+        
+    #     data = load_data(basepath)
+    #     train_data, test_data = separate_data(data)
+    #     n_user, id2index = self.indexing_data(data)
+    #     train_data_proc = process_data(train_data, id2index, device)
+    #     test_data_proc = process_data(test_data, id2index, device)
+
+    #     return train_data_proc, test_data_proc, len(id2index), n_user
     
     ### lightGCN 모델에서 임베딩, 인덱스 가져오기
-    def get_embed(self):
+    # def get_embed(self):
 
-        train_data, test_data, n_node, n_user = self.prepare_dataset(
-            device, CFG.basepath, verbose=CFG.loader_verbose, logger=logger.getChild("data")
-        )
+    #     train_data, test_data, n_node, n_user = self.prepare_dataset(
+    #         device, CFG.basepath, verbose=CFG.loader_verbose, logger=logger.getChild("data")
+    #     )
 
-        model = build(
-            n_node,
-            embedding_dim=CFG.embedding_dim,
-            num_layers=CFG.num_layers,
-            alpha=CFG.alpha,
-            weight="/opt/ml/dkt_team/code/lightgcn/weight/best_model.pt",
-            logger=logger.getChild("build"),
-            **CFG.build_kwargs
-        )
-        model.to(device)
+    #     model = build(
+    #         n_node,
+    #         embedding_dim=CFG.embedding_dim,
+    #         num_layers=CFG.num_layers,
+    #         alpha=CFG.alpha,
+    #         weight="/opt/ml/dkt_team/code/lightgcn/weight/best_model.pt",
+    #         logger=logger.getChild("build"),
+    #         **CFG.build_kwargs
+    #     )
+    #     model.to(device)
 
-        embed_matrix = model.get_embedding(train_data['edge']).to(device)
+    #     embed_matrix = model.get_embedding(train_data['edge']).to(device)
         
-        return embed_matrix, n_user
+    #     return embed_matrix, n_user
     
     # 문제 lgcn embedding 구하기
-    def lgcn_embedding_question(self, question):
-        question = question.detach().cpu().numpy()
-        embed_matrix = self.embed_matrix.detach().cpu().numpy()
-        len_user = self.n_user - 1
+    # def lgcn_embedding_question(self, question):
+    #     question = question.detach().cpu().numpy()
+    #     embed_matrix = self.embed_matrix.detach().cpu().numpy()
+    #     len_user = self.n_user - 1
 
-        question_embed = []
-        for user in question:
-            user_li = []
-            for item in user:
-                user_li.append(embed_matrix[len_user + item])
-            question_embed.append(user_li)
+    #     question_embed = []
+    #     for user in question:
+    #         user_li = []
+    #         for item in user:
+    #             user_li.append(embed_matrix[len_user + item])
+    #         question_embed.append(user_li)
 
-        question_embed = torch.Tensor(np.array(question_embed))
+    #     question_embed = torch.Tensor(np.array(question_embed))
         
-        return question_embed
+    #     return question_embed
+    
+    # 문제 lgcn embedding 구하기
+    def lgcn_embedding(self, itemnode, item):
+        item = item.detach().cpu().numpy()
+        
+        if itemnode == 'testId':
+            embed_matrix, n_user = self.test_embed_matrix, self.test_n_user
+        else:
+            embed_matrix, n_user = self.question_embed_matrix, self.question_n_user
+        embed_matrix = embed_matrix.detach().cpu().numpy()
+        
+        len_user = n_user - 1
+
+        item_embed = []
+        for user in item:
+            user_li = []
+            for i in user:
+                user_li.append(embed_matrix[len_user + i])
+            item_embed.append(user_li)
+
+        item_embed = torch.Tensor(np.array(item_embed))
+        
+        return item_embed
 
     def forward(self, input):
         test, question, tag, _, mask, interaction = input #(test, question, tag, correct, mask, interaction)
 
         # Embedding
-        embed_test = self.embedding_test(test)                #shape = (64,20,21)
+        # embed_test = self.embedding_test(test)                #shape = (64,20,21)
         # embed_test = nn.Dropout(0.1)(embed_test)
+        
+        embed_test = self.lgcn_embedding('testId', test).to(device)
+        embed_test = self.lgcn_linear_test(embed_test)
         
         # embed_question = self.embedding_question(question)
         # embed_question = nn.Dropout(0.1)(embed_question)
 
-        embed_question = self.lgcn_embedding_question(question).to(device)
+        embed_question = self.lgcn_embedding('assessmentItemID', question).to(device)
         embed_question = self.lgcn_linear(embed_question)
         
         embed_tag = self.embedding_tag(tag) 

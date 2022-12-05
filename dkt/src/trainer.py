@@ -3,6 +3,7 @@ import os
 
 import torch
 import wandb
+import mlflow
 
 from .criterion import get_criterion
 from .dataloader import get_loaders
@@ -51,6 +52,7 @@ def run(args, train_data, valid_data, model):
                 "valid_acc_epoch": acc,
             },step = epoch
         )
+
         if auc > best_auc:
             best_auc = auc
             # torch.nn.DataParallel로 감싸진 경우 원래의 model을 가져옵니다.
@@ -75,6 +77,11 @@ def run(args, train_data, valid_data, model):
         # scheduler
         if args.scheduler == "plateau":
             scheduler.step(best_auc)
+
+        mlflow.log_metric("VAL AUC",best_auc)
+        mlflow.log_metric("VAL ACC",acc)
+        mlflow.log_metric("TRAIN AUC",train_auc)
+    mlflow.pytorch.log_model(model, artifact_path="model") # 모델 기록
 
 
 def train(train_loader, model, optimizer, scheduler, args):
@@ -195,6 +202,7 @@ def get_model(args):
 # 배치 전처리
 def process_batch(batch):
 
+    #🙂7. FE할 때 여기 고치세요! 주의할 점 : 6번과정과 비슷한데, 끝에 mask 추가해주세요!
     test, question, tag, correct, mask = batch
     # test, question, tag, correct, new_feature, mask = batch
 
@@ -209,13 +217,15 @@ def process_batch(batch):
     interaction_mask[:, 0] = 0
     interaction = (interaction * interaction_mask).to(torch.int64)
 
-    #  test_id, question_id, tag
+    #🙂8. FE할 때 여기 고치세요! 주의할 점 : answerCode를 나타내는 correct와 mask는 빼고 해주세요!
+    # # 다른 columns도 masking하고, masking한 0과 실제 0의 값을 구분위해+1        
     test = ((test + 1) * mask).int()
     question = ((question + 1) * mask).int()
     tag = ((tag + 1) * mask).int()
     # new_feature = ((new_feature + 1) * mask).int()
     
-
+    #🙂9. FE할 때 여기 고치세요! 주의할 점 : 7번과정과 비슷한데, 끝에 interaction을 붙여주세요!
+    #👍여기까지 하셨다면, model에 넣기 전 피처추가 과정은 완료되었습니다. 이제 사용하실 모델에서 추가한 피처에 대해 임베딩하고 쓰시면 될겁니다!
     return (test, question, tag, correct, mask, interaction)
     # return (test, question, tag, correct, mask, interaction, new_feature)
 
