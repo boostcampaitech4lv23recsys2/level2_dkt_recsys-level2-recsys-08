@@ -14,7 +14,7 @@ import wandb
 from PIL import Image
 from args import parse_args
 
-from utils import seed_everything, plot_explain, data_load, mlflow_image
+from utils import seed_everything, plot_explain, data_load, explain_image,fi_image
 from data import categorical_feature,assess_count,\
     feature_engineering,custom_train_test_split,percentile,time_feature_engineering
 
@@ -97,7 +97,7 @@ def main(args):
         y_train = train_set['answerCode'].values,
         eval_set = [(train_set.drop(columns = 'answerCode').values,train_set['answerCode'].values),(valid_set.drop(columns = 'answerCode').values,valid_set['answerCode'].values)],
         eval_name = ['train','valid'],
-        eval_metric = ['auc','accuracy'],
+        eval_metric = ['accuracy','auc'],
         max_epochs = args.N_EPOCHS, 
         patience = args.PATIENCE,
         batch_size = args.BATCH_SZ, 
@@ -132,8 +132,12 @@ def main(args):
     wandb.run.summary['best_acc'] = valid_acc
 
     # mlflow image logging
+    feat_importances = model.feature_importances_
+    indices = np.argsort(feat_importances)
+    fi_image(feat_importances,indices,FEATS,experiment_id)
+
     explain,masks = model.explain(valid_set.drop(columns = 'answerCode').values)
-    mlflow_image(explain,masks,FEATS,experiment_id)
+    explain_image(explain,masks,FEATS,experiment_id)
     
 
     # submission 저장
