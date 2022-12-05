@@ -1,5 +1,7 @@
 import pandas as pd
 import torch
+import mlflow
+import argparse
 from config import CFG, logging_conf
 from lightgcn.datasets import prepare_dataset
 from lightgcn.models import build, train
@@ -19,17 +21,17 @@ device = torch.device("cuda" if use_cuda else "cpu")
 print(f'device : {device}')
 
 
-def main():
+def main(args):
     logger.info("Task Started")
 
     logger.info("[1/1] Data Preparing - Start")
-    train_data, test_data, n_node = prepare_dataset(
+    train_data, test_data, n_node = prepare_dataset(args,
         device, CFG.basepath, verbose=CFG.loader_verbose, logger=logger.getChild("data")
     )
     logger.info("[1/1] Data Preparing - Done")
 
     logger.info("[2/2] Model Building - Start")
-    model = build(
+    model = build(args,
         n_node,
         embedding_dim=CFG.embedding_dim,
         num_layers=CFG.num_layers,
@@ -45,7 +47,7 @@ def main():
     logger.info("[2/2] Model Building - Done")
 
     logger.info("[3/3] Model Training - Start")
-    train(
+    train(args,
         model,
         train_data,
         n_epoch=CFG.n_epoch,
@@ -60,4 +62,38 @@ def main():
 
 
 if __name__ == "__main__":
-    main()
+    parser = argparse.ArgumentParser(description='parser')
+    arg = parser.add_argument
+    
+    parser.add_argument("--item_node", default="assessmentItemID", type=str, help="item node")
+    # parser.add_argument("--item_node", default="testId", type=str, help="item node")
+    
+    args = parser.parse_args()
+    
+    remote_server_uri ="http://118.67.134.110:30005"
+    mlflow.set_tracking_uri(remote_server_uri)
+    
+    experiment_name = "lightGCN"
+    experiment = mlflow.get_experiment_by_name(experiment_name)
+    if experiment == None:
+        experiment = mlflow.set_experiment(experiment_name)
+    client = mlflow.tracking.MlflowClient()
+    
+    run = client.create_run(experiment.experiment_id)
+    run_name = "🌈(12/05 Mon)[lightGCN_" + args.item_node + "]"
+
+    #🙂1. FE할 때 여기 고치세요!
+    columns = [args.item_node]
+    desc = '사용한 피처 :' + ', '.join(columns)
+
+    with mlflow.start_run(run_id=run.info.run_id, run_name=run_name, description=desc):
+        mlflow.set_tag("mlflow.runName", run_name)
+        mlflow.set_tag('mlflow.user', 'jhl')
+        params = {"lr":CFG.learning_rate,
+                  "epoch":CFG.n_epoch,
+                  "embedding_dim":CFG.embedding_dim,
+                  "num_layers":CFG.num_layers,
+                  }
+        mlflow.log_params(params)
+
+        main(args)

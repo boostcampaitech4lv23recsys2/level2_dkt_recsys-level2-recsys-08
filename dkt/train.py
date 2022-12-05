@@ -48,7 +48,7 @@ if __name__ == "__main__":
     client = mlflow.tracking.MlflowClient()
     
     run = client.create_run(experiment.experiment_id)
-    run_name = "🌈(12/04 Sun)["+args.model+"] 피처: ?개)"
+    run_name = "🌈(12/05 Mon)["+args.model+"] 피처: 3개)"
 
     #🙂1. FE할 때 여기 고치세요!
     columns = ["assessmentItemID", "testId", "KnowledgeTag"]
@@ -67,4 +67,4 @@ if __name__ == "__main__":
                   }
         mlflow.log_params(params)
 
-    main(args)
+        main(args)
