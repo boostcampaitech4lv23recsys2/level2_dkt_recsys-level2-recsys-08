@@ -14,6 +14,7 @@ def main(args):
     wandb.login()
     setSeeds(args.seed)
     args.device = "cuda" if torch.cuda.is_available() else "cpu"
+    print(args.device)
 
     preprocess = Preprocess(args)
     preprocess.load_train_data(args)
@@ -22,9 +23,9 @@ def main(args):
                                               #shape 중간의 4는 ["testID","assessmentItemID","knowledgeTag","answerCode"]+solvesec
     train_data, valid_data = preprocess.split_data(train_data)
     # answerCode가 -1제외 test데이터도 같이 학습
-    preprocess.load_train_test_data(args)
-    train_test_data = preprocess.get_train_test_data()
-    train_data = np.concatenate((train_data, train_test_data), axis=0)
+    # preprocess.load_train_test_data(args)
+    # train_test_data = preprocess.get_train_test_data()
+    # train_data = np.concatenate((train_data, train_test_data), axis=0)
 
     wandb.init(project="Sequential", entity = "recsys8", config=vars(args))
     wandb.run.name = f"{args.model}" # 표시되는 이름을 바꾸고 싶다면 해당 줄을 바꿔주세요
@@ -50,16 +51,19 @@ if __name__ == "__main__":
     client = mlflow.tracking.MlflowClient()
     
     run = client.create_run(experiment.experiment_id)
-    run_name = "🌈(12/04 Sun)["+args.model+" -1제외 테스트데이터도 학습] 피처: 6개)"
 
     #🙂1. FE할 때 여기 고치세요!
     args.base_cols = ['userID','Timestamp','answerCode']
-    args.cat_cols = ['big_category','mid_category','problem_num', 'month', 'dayname']
-    args.num_cols = ['solvesec_600']
+    args.cat_cols = ['testId','assessmentItemID','KnowledgeTag','big_category','mid_category','problem_num', 'month', 'dayname']
+    args.num_cols = ['solvesec_600', 'big_mean', 'big_std','tag_mean', 'tag_std','test_mean', 'test_std','month_mean']
+    
+    args.used_cat_cols = ['TestId','assessmentItemID','KnowledgeTag','big_category','mid_category','problem_num', 'month', ]#'dayname']
+    args.used_num_cols = ['solvesec_600', 'big_mean', 'big_std','tag_mean', 'tag_std','test_mean', 'test_std',]#'month_mean']
     args.train_df_csv = "/opt/ml/input/main_dir/dkt/asset/train_fe_df.csv"
     args.test_df_csv = "/opt/ml/input/main_dir/dkt/asset/test_fe_df.csv"
 
-    desc = '사용한 피처 :' + ', '.join(args.cat_cols + args.num_cols)
+    run_name = "🌈(12/06 Tue)["+args.model+"달 정보 빼기] 피처: "+str(len(args.used_cat_cols)+len(args.used_num_cols))+"개)"
+    desc = '사용한 피처 :' + ', '.join(args.used_cat_cols + args.used_num_cols)
 
     with mlflow.start_run(run_name="tmp", run_id=run.info.run_id, description=desc):
         mlflow.set_tag("mlflow.runName", run_name)

@@ -18,4 +18,14 @@ def main(args):
 if __name__ == "__main__":
     args = parse_args()
     os.makedirs(args.model_dir, exist_ok=True)
+    
+    args.base_cols = ['userID','Timestamp','answerCode']
+    args.cat_cols = ['testId','assessmentItemID','KnowledgeTag','big_category','mid_category','problem_num', 'month', 'dayname']
+    args.num_cols = ['solvesec_600', 'big_mean', 'big_std','tag_mean', 'tag_std','test_mean', 'test_std','month_mean']
+    
+    args.used_cat_cols = ['TestId','assessmentItemID','KnowledgeTag','big_category','mid_category','problem_num', 'month', 'dayname']
+    args.used_num_cols = ['solvesec_600', 'big_mean', 'big_std','tag_mean', 'tag_std','test_mean', 'test_std','month_mean']
+    args.train_df_csv = "/opt/ml/input/main_dir/dkt/asset/train_fe_df.csv"
+    args.test_df_csv = "/opt/ml/input/main_dir/dkt/asset/test_fe_df.csv"
+
     main(args)

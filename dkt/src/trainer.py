@@ -203,7 +203,10 @@ def get_model(args):
 def process_batch(batch):
 
     #🙂5. FE할 때 여기 고치세요! 주의할 점 : 4번과정과 비슷한데, 끝에 mask 추가해주세요!
-    big_category, mid_category, problem_num, correct, month, dayname, solvesec_600_NA, mask = batch
+    testId,assessmentItemID,big_category, correct, mid_category,\
+        problem_num, month, dayname, solvesec_600, \
+        KnowledgeTag, big_mean, big_std, tag_mean, tag_std, \
+        test_mean, test_std, month_mean, mask = batch
     # test, question, tag, correct, new_feature, mask = batch
 
     # change to float
@@ -219,16 +222,30 @@ def process_batch(batch):
 
     #🙂6. FE할 때 여기 고치세요! 주의할 점 : answerCode를 나타내는 correct와 mask는 빼고 해주세요!
     # # 다른 columns도 masking하고, masking한 0과 실제 0의 값을 구분위해+1        
+    testId = ((testId + 1) * mask).int()
+    assessmentItemID = ((assessmentItemID + 1) * mask).int()
     big_category = ((big_category + 1) * mask).int()
     mid_category = ((mid_category + 1) * mask).int()
     problem_num = ((problem_num + 1) * mask).int()
     month = ((month + 1) * mask).int()
     dayname = ((dayname + 1) * mask).int()
-    solvesec_600_NA = ((solvesec_600_NA + 1) * mask).int()
+    solvesec_600_NA = ((solvesec_600 + 1) * mask).int()
+    KnowledgeTag = ((KnowledgeTag + 1) * mask).int()
+    big_mean = ((big_mean + 1) * mask).int()
+    big_std = ((big_std + 1) * mask).int()
+    tag_mean = ((tag_mean + 1) * mask).int()
+    tag_std = ((tag_std + 1) * mask).int()
+    test_mean = ((test_mean + 1) * mask).int()
+    test_std = ((test_std + 1) * mask).int()
+    month_mean = ((month_mean + 1) * mask).int()
+
     # new_feature = ((new_feature + 1) * mask).int()
     
     #🙂7. FE할 때 여기 고치세요! 주의할 점 : 5번과정과 비슷한데, 끝에 interaction을 붙여주세요!
-    return (big_category, mid_category, problem_num, correct, month, dayname, solvesec_600_NA, mask, interaction)
+    return (testId,assessmentItemID,big_category, correct, mid_category,\
+        problem_num, month, dayname, solvesec_600, \
+        KnowledgeTag, big_mean, big_std, tag_mean, tag_std, \
+        test_mean, test_std, month_mean, mask, interaction)
     # return (test, question, tag, correct, mask, interaction, new_feature)
 
 
@@ -272,7 +289,7 @@ def load_model(args):
     model = get_model(args)
 
     # load model state
-    model.load_state_dict(load_state["state_dict"], strict=True)
+    model.load_state_dict(load_state["state_dict"], strict=False)
 
     print("Loading Model from:", model_path, "...Finished.")
     return model

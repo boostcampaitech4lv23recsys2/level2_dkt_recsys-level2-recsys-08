@@ -21,18 +21,6 @@ class LSTM(nn.Module):
         self.hidden_dim = self.args.hidden_dim
         self.n_layers = self.args.n_layers
 
-        # Embedding
-        # interaction은 현재 correct로 구성되어있다. correct(1, 2) + padding(0)
-        self.embedding_interaction = nn.Embedding(3, self.hidden_dim // 3)
-        self.embedding_big_category = nn.Embedding(self.args.n_big_category + 1, self.hidden_dim // 3)
-        self.embedding_mid_category = nn.Embedding(self.args.n_mid_category + 1, self.hidden_dim // 3)
-        self.embedding_problem_num = nn.Embedding(self.args.n_problem_num + 1, self.hidden_dim // 3)
-        self.embedding_month = nn.Embedding(self.args.n_month + 1, self.hidden_dim // 3)
-        self.embedding_dayname = nn.Embedding(self.args.n_dayname + 1, self.hidden_dim // 3)
-
-        # embedding combination projection
-        self.comb_proj = nn.Linear((self.hidden_dim // 3) * 6+1, self.hidden_dim) # 원하는 차원으로 줄이기
-
         self.lstm = nn.LSTM(
             self.hidden_dim, self.hidden_dim, self.n_layers, batch_first=True #nn.LSTM(input_size, hidden_size, num_layers, ...)
         )
@@ -40,31 +28,78 @@ class LSTM(nn.Module):
         # Fully connected layer
         self.fc = nn.Linear(self.hidden_dim, 1)
 
-    def forward(self, input):
+        ######## 신나는 Embedding ########
+        # interaction은 현재 correct로 구성되어있다. correct(1, 2) + padding(0)
+        #😘1.FE할 때 여기
+        
+        self.embedding_testId = nn.Embedding(self.args.n_testId + 1, self.hidden_dim // 6)
+        self.embedding_assessmentItemID = nn.Embedding(self.args.n_assessmentItemID + 1, self.hidden_dim // 6)
+        self.embedding_interaction = nn.Embedding(3, self.hidden_dim // 6)
+        self.embedding_big_category = nn.Embedding(self.args.n_big_category + 1, self.hidden_dim // 6)
+        self.embedding_mid_category = nn.Embedding(self.args.n_mid_category + 1, self.hidden_dim // 6)
+        self.embedding_problem_num = nn.Embedding(self.args.n_problem_num + 1, self.hidden_dim // 6)
+        self.embedding_month = nn.Embedding(self.args.n_month + 1, self.hidden_dim // 6)
+        self.embedding_dayname = nn.Embedding(self.args.n_dayname + 1, self.hidden_dim // 6)
+        self.embedding_KnowledgeTag = nn.Embedding(self.args.n_KnowledgeTag + 1, self.hidden_dim // 6)
+    
+        self.solvesec_600 = nn.Linear(in_features=1, out_features=self.hidden_dim//6)
+        self.big_mean = nn.Linear(in_features=1, out_features=self.hidden_dim//6)
+        self.big_std = nn.Linear(in_features=1, out_features=self.hidden_dim//6)
+        self.tag_mean = nn.Linear(in_features=1, out_features=self.hidden_dim//6)
+        self.tag_std = nn.Linear(in_features=1, out_features=self.hidden_dim//6)
+        self.test_mean = nn.Linear(in_features=1, out_features=self.hidden_dim//6)
+        self.test_std = nn.Linear(in_features=1, out_features=self.hidden_dim//6)
+        self.month_mean = nn.Linear(in_features=1, out_features=self.hidden_dim//6)
+        
+        #😘2.FE할 때 여기
+        self.comb_proj = nn.Linear((self.hidden_dim // 6) * (9+8-2), self.hidden_dim) # 원하는 차원으로 줄이기
 
-        big_category, mid_category, problem_num, _, month, dayname, solvesec_600_NA, mask, interaction = input
+    def forward(self, input):
+        
+        # test, question, tag, _, mask, interaction = input #(test, question, tag, correct, mask, interaction)
+        #😘3.FE할 때 여기
+        testId, assessmentItemID, big_category, answerCode, mid_category,\
+        problem_num,  month, dayname, solvesec_600, \
+        KnowledgeTag, big_mean, big_std, tag_mean, tag_std, \
+        test_mean, test_std, month_mean, mask, interaction = input
         # test, question, tag, _, mask, interaction, new_feature = input
         batch_size = interaction.size(0) #(64, 20)
 
         ######## Embedding ########
+        #😘4.FE할 때 여기
+        
+        embed_testId = self.embedding_testId(testId.type(torch.cuda.IntTensor))
+        embed_assessmentItemID = self.embedding_assessmentItemID(assessmentItemID.type(torch.cuda.IntTensor))
         embed_big_category = self.embedding_big_category(big_category.type(torch.cuda.IntTensor))                #shape = (64,20,21)
         embed_mid_category = self.embedding_mid_category(mid_category.type(torch.cuda.IntTensor))
         embed_problem_num = self.embedding_problem_num(problem_num.type(torch.cuda.IntTensor)) 
         embed_interaction = self.embedding_interaction(interaction.type(torch.cuda.IntTensor))
         embed_month = self.embedding_month(month.type(torch.cuda.IntTensor))
         embed_dayname = self.embedding_dayname(dayname.type(torch.cuda.IntTensor))
+        embed_KnowledgeTag = self.embedding_KnowledgeTag(KnowledgeTag.type(torch.cuda.IntTensor))
+        
         # embed_new_feature = self.embedding_new_feature(new_feature)
-
+        #😘5.FE할 때 여기
         embed = torch.cat(
             [
+                embed_testId,
+                embed_assessmentItemID,
                 embed_big_category,
                 embed_mid_category,
                 embed_problem_num,
                 embed_interaction,
-                embed_month,
+                # embed_month,
                 embed_dayname,
-                solvesec_600_NA.unsqueeze(2)
-                # embed_new_feature,
+                embed_KnowledgeTag,
+
+                self.big_mean(big_mean.unsqueeze(2).type(torch.cuda.FloatTensor)),
+                self.solvesec_600(solvesec_600.unsqueeze(2).type(torch.cuda.FloatTensor)),
+                self.big_std(big_std.unsqueeze(2).type(torch.cuda.FloatTensor)),
+                self.tag_mean(solvesec_600.unsqueeze(2).type(torch.cuda.FloatTensor)),
+                self.tag_std(tag_std.unsqueeze(2).type(torch.cuda.FloatTensor)),
+                self.test_mean(test_mean.unsqueeze(2).type(torch.cuda.FloatTensor)),
+                self.test_std(test_std.unsqueeze(2).type(torch.cuda.FloatTensor)),
+                # self.month_mean(month_mean.unsqueeze(2).type(torch.cuda.FloatTensor)),
             ],
             2,
         )
@@ -87,18 +122,6 @@ class LSTMATTN(nn.Module):
         self.n_heads = self.args.n_heads
         self.drop_out = self.args.drop_out
 
-        # Embedding
-        # interaction은 현재 correct로 구성되어있다. correct(1, 2) + padding(0)
-        self.embedding_interaction = nn.Embedding(3, self.hidden_dim // 3)
-        self.embedding_big_category = nn.Embedding(self.args.n_big_category + 1, self.hidden_dim // 3)
-        self.embedding_mid_category = nn.Embedding(self.args.n_mid_category + 1, self.hidden_dim // 3)
-        self.embedding_problem_num = nn.Embedding(self.args.n_problem_num + 1, self.hidden_dim // 3)
-        self.embedding_month = nn.Embedding(self.args.n_month + 1, self.hidden_dim // 3)
-        self.embedding_dayname = nn.Embedding(self.args.n_dayname + 1, self.hidden_dim // 3)
-        
-        # embedding combination projection
-        self.comb_proj = nn.Linear((self.hidden_dim // 3) * 6+1, self.hidden_dim) # 원하는 차원으로 줄이기
-
         self.lstm = nn.LSTM(
             self.hidden_dim, self.hidden_dim, self.n_layers, batch_first=True
         )
@@ -120,31 +143,78 @@ class LSTMATTN(nn.Module):
 
         self.activation = nn.Sigmoid()
 
-    def forward(self, input):
+        ######## 신나는 Embedding ########
+        # interaction은 현재 correct로 구성되어있다. correct(1, 2) + padding(0)
+        #😘1.FE할 때 여기
+        
+        self.embedding_testId = nn.Embedding(self.args.n_testId + 1, self.hidden_dim // 6)
+        self.embedding_assessmentItemID = nn.Embedding(self.args.n_assessmentItemID + 1, self.hidden_dim // 6)
+        self.embedding_interaction = nn.Embedding(3, self.hidden_dim // 6)
+        self.embedding_big_category = nn.Embedding(self.args.n_big_category + 1, self.hidden_dim // 6)
+        self.embedding_mid_category = nn.Embedding(self.args.n_mid_category + 1, self.hidden_dim // 6)
+        self.embedding_problem_num = nn.Embedding(self.args.n_problem_num + 1, self.hidden_dim // 6)
+        self.embedding_month = nn.Embedding(self.args.n_month + 1, self.hidden_dim // 6)
+        self.embedding_dayname = nn.Embedding(self.args.n_dayname + 1, self.hidden_dim // 6)
+        self.embedding_KnowledgeTag = nn.Embedding(self.args.n_KnowledgeTag + 1, self.hidden_dim // 6)
+    
+        self.solvesec_600 = nn.Linear(in_features=1, out_features=self.hidden_dim//6)
+        self.big_mean = nn.Linear(in_features=1, out_features=self.hidden_dim//6)
+        self.big_std = nn.Linear(in_features=1, out_features=self.hidden_dim//6)
+        self.tag_mean = nn.Linear(in_features=1, out_features=self.hidden_dim//6)
+        self.tag_std = nn.Linear(in_features=1, out_features=self.hidden_dim//6)
+        self.test_mean = nn.Linear(in_features=1, out_features=self.hidden_dim//6)
+        self.test_std = nn.Linear(in_features=1, out_features=self.hidden_dim//6)
+        self.month_mean = nn.Linear(in_features=1, out_features=self.hidden_dim//6)
+        
+        #😘2.FE할 때 여기
+        self.comb_proj = nn.Linear((self.hidden_dim // 6) * (9+8-2), self.hidden_dim) # 원하는 차원으로 줄이기
 
-        big_category, mid_category, problem_num, _, month, dayname, solvesec_600_NA, mask, interaction = input
+    def forward(self, input):
+        
+        # test, question, tag, _, mask, interaction = input #(test, question, tag, correct, mask, interaction)
+        #😘3.FE할 때 여기
+        testId, assessmentItemID, big_category, answerCode, mid_category,\
+        problem_num,  month, dayname, solvesec_600, \
+        KnowledgeTag, big_mean, big_std, tag_mean, tag_std, \
+        test_mean, test_std, month_mean, mask, interaction = input
         # test, question, tag, _, mask, interaction, new_feature = input
         batch_size = interaction.size(0) #(64, 20)
 
         ######## Embedding ########
+        #😘4.FE할 때 여기
+        
+        embed_testId = self.embedding_testId(testId.type(torch.cuda.IntTensor))
+        embed_assessmentItemID = self.embedding_assessmentItemID(assessmentItemID.type(torch.cuda.IntTensor))
         embed_big_category = self.embedding_big_category(big_category.type(torch.cuda.IntTensor))                #shape = (64,20,21)
         embed_mid_category = self.embedding_mid_category(mid_category.type(torch.cuda.IntTensor))
         embed_problem_num = self.embedding_problem_num(problem_num.type(torch.cuda.IntTensor)) 
         embed_interaction = self.embedding_interaction(interaction.type(torch.cuda.IntTensor))
         embed_month = self.embedding_month(month.type(torch.cuda.IntTensor))
         embed_dayname = self.embedding_dayname(dayname.type(torch.cuda.IntTensor))
+        embed_KnowledgeTag = self.embedding_KnowledgeTag(KnowledgeTag.type(torch.cuda.IntTensor))
+        
         # embed_new_feature = self.embedding_new_feature(new_feature)
-
+        #😘5.FE할 때 여기
         embed = torch.cat(
             [
+                embed_testId,
+                embed_assessmentItemID,
                 embed_big_category,
                 embed_mid_category,
                 embed_problem_num,
                 embed_interaction,
-                embed_month,
+                # embed_month,
                 embed_dayname,
-                solvesec_600_NA.unsqueeze(2)
-                # embed_new_feature,
+                embed_KnowledgeTag,
+
+                self.big_mean(big_mean.unsqueeze(2).type(torch.cuda.FloatTensor)),
+                self.solvesec_600(solvesec_600.unsqueeze(2).type(torch.cuda.FloatTensor)),
+                self.big_std(big_std.unsqueeze(2).type(torch.cuda.FloatTensor)),
+                self.tag_mean(solvesec_600.unsqueeze(2).type(torch.cuda.FloatTensor)),
+                self.tag_std(tag_std.unsqueeze(2).type(torch.cuda.FloatTensor)),
+                self.test_mean(test_mean.unsqueeze(2).type(torch.cuda.FloatTensor)),
+                self.test_std(test_std.unsqueeze(2).type(torch.cuda.FloatTensor)),
+                # self.month_mean(month_mean.unsqueeze(2).type(torch.cuda.FloatTensor)),
             ],
             2,
         )

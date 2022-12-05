@@ -19,6 +19,7 @@ def get_sinusoid_encoding_table(n_seq, d_hidn):
 def get_pos(seq_len):
     return torch.arange( seq_len ).unsqueeze(0).unsqueeze(2)
 
+
 class Feed_Forward_block(nn.Module):
     """
     out =  Relu( M_out*w1 + b1) *w2 + b2
@@ -32,21 +33,29 @@ class Feed_Forward_block(nn.Module):
         return  self.layer2(F.relu(self.layer1(ffn_in)))
 
 class LQTransformer(nn.Module):
+    def init_hidden(self, batch_size):
+        h = torch.zeros(
+            # self.args.n_layers,
+            1,
+            batch_size,
+            self.hidden_dim)
+        h = h.to(self.args.device)
+
+        c = torch.zeros(
+            # self.args.n_layers,
+            1,
+            batch_size,
+            self.hidden_dim)
+        c = c.to(self.args.device)
+
+        return (h, c)
+
     def __init__(self, args):
         super().__init__()
 
         self.args = args
         self.hidden_dim = self.args.hidden_dim
 
-        ######## 신나는 Embedding ########
-        # interaction은 현재 correct로 구성되어있다. correct(1, 2) + padding(0)
-        self.embedding_interaction = nn.Embedding(3, self.hidden_dim // 3)
-        self.embedding_big_category = nn.Embedding(self.args.n_big_category + 1, self.hidden_dim // 3)
-        self.embedding_mid_category = nn.Embedding(self.args.n_mid_category + 1, self.hidden_dim // 3)
-        self.embedding_problem_num = nn.Embedding(self.args.n_problem_num + 1, self.hidden_dim // 3)
-        self.embedding_month = nn.Embedding(self.args.n_month + 1, self.hidden_dim // 3)
-        self.embedding_dayname = nn.Embedding(self.args.n_dayname + 1, self.hidden_dim // 3)
-        # self.embedding_new_feature = nn.Embedding(self.args.n_new_feature + 1, self.hidden_dim // 3)
 
         ######## positioal Embedding ########
         ## sin, cos positional embedding
@@ -54,79 +63,108 @@ class LQTransformer(nn.Module):
         # self.embedding_pos =  torch.FloatTensor(self.embedding_pos).to(args.device)
         ## arange positional embedding
         self.embedding_pos = get_pos(args.max_seq_len).to(args.device)
-        self.comb_proj = nn.Linear((self.hidden_dim // 3) * 6+1, self.hidden_dim) # 원하는 차원으로 줄이기
-        # new_feature : self.comb_proj = nn.Linear((self.hidden_dim // 3) * 5, self.hidden_dim) # 원하는 차원으로 줄이기
 
         ######## query, key, value ########
-        self.query = nn.Linear(in_features=(self.hidden_dim // 3) * 6+1, out_features=(self.hidden_dim // 3) * 6+1)
-        self.key = nn.Linear(in_features=(self.hidden_dim // 3) * 6+1, out_features=(self.hidden_dim // 3) * 6+1)
-        self.value = nn.Linear(in_features=(self.hidden_dim // 3) * 6+1, out_features=(self.hidden_dim // 3) * 6+1)
+        self.query = nn.Linear(in_features=self.hidden_dim, out_features=self.hidden_dim)
+        self.key = nn.Linear(in_features=self.hidden_dim, out_features=self.hidden_dim)
+        self.value = nn.Linear(in_features=self.hidden_dim, out_features=self.hidden_dim)
 
         ######## multihead attention(여기선 head를 1로 두었다.) ########
-        self.attn = nn.MultiheadAttention( embed_dim= (self.hidden_dim // 3) * 6+1, num_heads= 1, batch_first = True, dropout=0.1)     # multihead attention    ## todo add dropout, LayerNORM
+        self.attn = nn.MultiheadAttention( embed_dim= self.hidden_dim, num_heads= 1, batch_first = True, dropout=0.1)     # multihead attention    ## todo add dropout, LayerNORM
         
         ######## lstm ########
-        self.lstm = nn.LSTM(input_size= (self.hidden_dim // 3) * 6+1, hidden_size = (self.hidden_dim // 3) * 6+1, num_layers=1, batch_first = True)
+        self.lstm = nn.LSTM(input_size= self.hidden_dim, hidden_size = self.hidden_dim, num_layers=1, batch_first = True)
 
         ######## layer norm ########
-        self.layer_norm1 = nn.LayerNorm((self.hidden_dim // 3) * 6+1)
-        self.layer_norm2 = nn.LayerNorm((self.hidden_dim // 3) * 6+1)
+        self.layer_norm1 = nn.LayerNorm(self.hidden_dim)
+        self.layer_norm2 = nn.LayerNorm(self.hidden_dim)
+
         
         ######## feed-forward ########
-        self.ffn = Feed_Forward_block((self.hidden_dim // 3) * 6+1, 4*self.hidden_dim)  
+        self.ffn = Feed_Forward_block(self.hidden_dim, 6*self.hidden_dim)  
         
         ######## fully connect ########
-        self.fc = nn.Linear(in_features=(self.hidden_dim // 3) * 6+1, out_features=1)
+        self.fc = nn.Linear(in_features=self.hidden_dim, out_features=1)
        
         self.activation = nn.Sigmoid()
-
-    def init_hidden(self, batch_size):
-        h = torch.zeros(
-            # self.args.n_layers,
-            1,
-            batch_size,
-            (self.hidden_dim // 3) * 6+1)
-        h = h.to(self.args.device)
-
-        c = torch.zeros(
-            # self.args.n_layers,
-            1,
-            batch_size,
-            (self.hidden_dim // 3) * 6+1)
-        c = c.to(self.args.device)
-
-        return (h, c)
+        
+        ######## 신나는 Embedding ########
+        # interaction은 현재 correct로 구성되어있다. correct(1, 2) + padding(0)
+        #😘1.FE할 때 여기
+        
+        self.embedding_testId = nn.Embedding(self.args.n_testId + 1, self.hidden_dim // 6)
+        self.embedding_assessmentItemID = nn.Embedding(self.args.n_assessmentItemID + 1, self.hidden_dim // 6)
+        self.embedding_interaction = nn.Embedding(3, self.hidden_dim // 6)
+        self.embedding_big_category = nn.Embedding(self.args.n_big_category + 1, self.hidden_dim // 6)
+        self.embedding_mid_category = nn.Embedding(self.args.n_mid_category + 1, self.hidden_dim // 6)
+        self.embedding_problem_num = nn.Embedding(self.args.n_problem_num + 1, self.hidden_dim // 6)
+        self.embedding_month = nn.Embedding(self.args.n_month + 1, self.hidden_dim // 6)
+        self.embedding_dayname = nn.Embedding(self.args.n_dayname + 1, self.hidden_dim // 6)
+        self.embedding_KnowledgeTag = nn.Embedding(self.args.n_KnowledgeTag + 1, self.hidden_dim // 6)
+    
+        self.solvesec_600 = nn.Linear(in_features=1, out_features=self.hidden_dim//6)
+        self.big_mean = nn.Linear(in_features=1, out_features=self.hidden_dim//6)
+        self.big_std = nn.Linear(in_features=1, out_features=self.hidden_dim//6)
+        self.tag_mean = nn.Linear(in_features=1, out_features=self.hidden_dim//6)
+        self.tag_std = nn.Linear(in_features=1, out_features=self.hidden_dim//6)
+        self.test_mean = nn.Linear(in_features=1, out_features=self.hidden_dim//6)
+        self.test_std = nn.Linear(in_features=1, out_features=self.hidden_dim//6)
+        self.month_mean = nn.Linear(in_features=1, out_features=self.hidden_dim//6)
+        
+        #😘2.FE할 때 여기
+        self.comb_proj = nn.Linear((self.hidden_dim // 6) * (9+8-2), self.hidden_dim) # 원하는 차원으로 줄이기
 
     def forward(self, input):
+        
         # test, question, tag, _, mask, interaction = input #(test, question, tag, correct, mask, interaction)
-        big_category, mid_category, problem_num, _, month, dayname, solvesec_600_NA, mask, interaction = input
+        #😘3.FE할 때 여기
+        testId, assessmentItemID, big_category, answerCode, mid_category,\
+        problem_num,  month, dayname, solvesec_600, \
+        KnowledgeTag, big_mean, big_std, tag_mean, tag_std, \
+        test_mean, test_std, month_mean, mask, interaction = input
         # test, question, tag, _, mask, interaction, new_feature = input
         batch_size = interaction.size(0) #(64, 20)
 
         ######## Embedding ########
+        #😘4.FE할 때 여기
+        
+        embed_testId = self.embedding_testId(testId.type(torch.cuda.IntTensor))
+        embed_assessmentItemID = self.embedding_assessmentItemID(assessmentItemID.type(torch.cuda.IntTensor))
         embed_big_category = self.embedding_big_category(big_category.type(torch.cuda.IntTensor))                #shape = (64,20,21)
         embed_mid_category = self.embedding_mid_category(mid_category.type(torch.cuda.IntTensor))
         embed_problem_num = self.embedding_problem_num(problem_num.type(torch.cuda.IntTensor)) 
         embed_interaction = self.embedding_interaction(interaction.type(torch.cuda.IntTensor))
         embed_month = self.embedding_month(month.type(torch.cuda.IntTensor))
         embed_dayname = self.embedding_dayname(dayname.type(torch.cuda.IntTensor))
+        embed_KnowledgeTag = self.embedding_KnowledgeTag(KnowledgeTag.type(torch.cuda.IntTensor))
+        
         # embed_new_feature = self.embedding_new_feature(new_feature)
-
+        #😘5.FE할 때 여기
         embed = torch.cat(
             [
+                embed_testId,
+                embed_assessmentItemID,
                 embed_big_category,
                 embed_mid_category,
                 embed_problem_num,
                 embed_interaction,
-                embed_month,
+                # embed_month,
                 embed_dayname,
-                solvesec_600_NA.unsqueeze(2)
-                # embed_new_feature,
+                embed_KnowledgeTag,
+
+                self.big_mean(big_mean.unsqueeze(2).type(torch.cuda.FloatTensor)),
+                self.solvesec_600(solvesec_600.unsqueeze(2).type(torch.cuda.FloatTensor)),
+                self.big_std(big_std.unsqueeze(2).type(torch.cuda.FloatTensor)),
+                self.tag_mean(solvesec_600.unsqueeze(2).type(torch.cuda.FloatTensor)),
+                self.tag_std(tag_std.unsqueeze(2).type(torch.cuda.FloatTensor)),
+                self.test_mean(test_mean.unsqueeze(2).type(torch.cuda.FloatTensor)),
+                self.test_std(test_std.unsqueeze(2).type(torch.cuda.FloatTensor)),
+                # self.month_mean(month_mean.unsqueeze(2).type(torch.cuda.FloatTensor)),
             ],
             2,
         )
 
-        # embed = self.comb_proj(embed) #64,20,64
+        embed = self.comb_proj(embed) #64,20,64
         embed = embed + self.embedding_pos #(64,20,64) (batch,seq,dim)
         # embed = nn.Dropout(0.1)(embed)
 
@@ -156,7 +194,7 @@ class LQTransformer(nn.Module):
         out, hidden = self.lstm(out, hidden)   #out shape = [64, 20, 64]
 
         ######## DNN ########
-        out = out.contiguous().view(batch_size, -1, (self.hidden_dim // 3) * 6+1)
+        out = out.contiguous().view(batch_size, -1, self.hidden_dim)
         out = self.fc(out) #[64, 20, 1]
 
         preds = self.activation(out).view(batch_size, -1) #[64, 20]

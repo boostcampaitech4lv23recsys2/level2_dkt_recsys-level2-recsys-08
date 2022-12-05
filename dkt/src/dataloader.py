@@ -53,10 +53,12 @@ class Preprocess:
             os.makedirs(self.args.asset_dir)
         all_df = pd.read_csv("/opt/ml/input/main_dir/dkt/asset/all_fe_df.csv")
         
-
-        for col in cate_cols:
-            exec(col + '2idx = {v:k for k,v in enumerate(all_df["' + col + '"].unique())}')
-            exec('df["' + col + '"] = df["' + col + '"].map(' + col + '2idx)')
+        for col in args.cat_cols:
+            exec("self.args.n_" + col + '= all_df["' + col + '"].nunique()')
+        
+        # for col in cate_cols:
+        #     exec(col + '2idx = {v:k for k,v in enumerate(all_df["' + col + '"].unique())}')
+        #     exec('df["' + col + '"] = df["' + col + '"].map(' + col + '2idx)')
 
         # for col in cate_cols:
 
@@ -79,13 +81,13 @@ class Preprocess:
         #     test = le.transform(df[col])
         #     df[col] = test
 
-        def convert_time(s):
-            timestamp = time.mktime(
-                datetime.strptime(s, "%Y-%m-%d %H:%M:%S").timetuple()
-            )
-            return int(timestamp)
+        # def convert_time(s):
+        #     timestamp = time.mktime(
+        #         datetime.strptime(s, "%Y-%m-%d %H:%M:%S").timetuple()
+        #     )
+        #     return int(timestamp)
 
-        df["Timestamp"] = df["Timestamp"].apply(convert_time)
+        # df["Timestamp"] = df["Timestamp"].apply(convert_time)
 
         return df
 
@@ -106,13 +108,10 @@ class Preprocess:
         if is_train == True:
             df = df[df['answerCode'] != -1]
         df = self.__feature_engineering(df, args, is_train)
-        # df = self.__preprocessing(df, args, is_train)
+        df = self.__preprocessing(df, args, is_train)
+
 
         # 추후 feature를 embedding할 시에 embedding_layer의 input 크기를 결정할때 사용
-
-        for col in args.cat_cols:
-            exec("self.args.n_" + col + '= df["' + col + '"].nunique()')
-
         # self.args.n_questions = len(
         #     np.load(os.path.join(self.args.asset_dir, "assessmentItemID_classes.npy"))
         # )
@@ -126,8 +125,10 @@ class Preprocess:
         df = df.sort_values(by=["userID", "Timestamp"], axis=0)
         
         #🙂2. FE할 때 여기 고치세요! 주의할 점 : userID와 answerCode 잊지마세요
-        columns = ['userID', 'big_category', 'mid_category',\
-                    'problem_num', 'answerCode', 'month', 'dayname', 'solvesec_600']
+        columns = ['userID', 'testId','assessmentItemID', 'big_category', 'mid_category',\
+                    'problem_num', 'answerCode', 'month', 'dayname', 'solvesec_600', \
+                    'KnowledgeTag','big_mean', 'big_std','tag_mean', 'tag_std', \
+                    'test_mean', 'test_std','month_mean']
         # columns = ['userID', 'assessmentItemID', 'testId', 'answerCode', 'KnowledgeTag','new_feature']
         
         #🙂3. FE할 때 여기 고치세요! 주의할 점 : answerCode 위치는 4번째에 적어주세요
@@ -136,13 +137,24 @@ class Preprocess:
             .groupby("userID")
             .apply(
                 lambda r: (
+
+                    r["testId"].values,
+                    r["assessmentItemID"].values,
                     r["big_category"].values,
+                    r["answerCode"].values,
                     r["mid_category"].values,
                     r["problem_num"].values,
-                    r["answerCode"].values,
                     r["month"].values,
                     r["dayname"].values,
                     r["solvesec_600"].values,
+                    r['KnowledgeTag'].values,
+                    r['big_mean'].values,
+                    r['big_std'].values,
+                    r['tag_mean'].values,
+                    r['tag_std'].values,
+                    r['test_mean'].values,
+                    r['test_std'].values,
+                    r['month_mean'].values,
                     # r["new_feature"].values,
                 )
             )
@@ -171,8 +183,14 @@ class DKTDataset(torch.utils.data.Dataset):
         seq_len = len(row[0])
         
         #🙂4. FE할 때 여기 고치세요! 주의할 점 : 3.과정(group) 순서 그대로 적어주세요!
-        big_category, mid_category, problem_num, correct, month, dayname, solvesec_600 = row
-        cols = [big_category, mid_category, problem_num, correct, month, dayname, solvesec_600]
+        testId,assessmentItemID, big_category, answerCode, mid_category,\
+        problem_num, month, dayname, solvesec_600, \
+        KnowledgeTag, big_mean, big_std, tag_mean, tag_std, \
+        test_mean, test_std, month_mean = row
+        cols = [testId,assessmentItemID,big_category, answerCode, mid_category,\
+                    problem_num, month, dayname, solvesec_600, \
+                    KnowledgeTag, big_mean, big_std,tag_mean, tag_std, \
+                    test_mean, test_std, month_mean]
 
         #test, question, tag, correct, new_feature = row[0], row[1], row[2], row[3], row[4]
         #cols = [test, question, tag, correct, new_feature]
