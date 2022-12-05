@@ -24,12 +24,14 @@ class LSTM(nn.Module):
         # Embedding
         # interaction은 현재 correct로 구성되어있다. correct(1, 2) + padding(0)
         self.embedding_interaction = nn.Embedding(3, self.hidden_dim // 3)
-        self.embedding_test = nn.Embedding(self.args.n_test + 1, self.hidden_dim // 3)
-        self.embedding_question = nn.Embedding(self.args.n_questions + 1, self.hidden_dim // 3)
-        self.embedding_tag = nn.Embedding(self.args.n_tag + 1, self.hidden_dim // 3)
+        self.embedding_big_category = nn.Embedding(self.args.n_big_category + 1, self.hidden_dim // 3)
+        self.embedding_mid_category = nn.Embedding(self.args.n_mid_category + 1, self.hidden_dim // 3)
+        self.embedding_problem_num = nn.Embedding(self.args.n_problem_num + 1, self.hidden_dim // 3)
+        self.embedding_month = nn.Embedding(self.args.n_month + 1, self.hidden_dim // 3)
+        self.embedding_dayname = nn.Embedding(self.args.n_dayname + 1, self.hidden_dim // 3)
 
         # embedding combination projection
-        self.comb_proj = nn.Linear((self.hidden_dim // 3) * 4, self.hidden_dim) # 원하는 차원으로 줄이기
+        self.comb_proj = nn.Linear((self.hidden_dim // 3) * 6+1, self.hidden_dim) # 원하는 차원으로 줄이기
 
         self.lstm = nn.LSTM(
             self.hidden_dim, self.hidden_dim, self.n_layers, batch_first=True #nn.LSTM(input_size, hidden_size, num_layers, ...)
@@ -40,26 +42,32 @@ class LSTM(nn.Module):
 
     def forward(self, input):
 
-        test, question, tag, _, mask, interaction = input #(test, question, tag, correct, mask, interaction)
+        big_category, mid_category, problem_num, _, month, dayname, solvesec_600_NA, mask, interaction = input
         # test, question, tag, _, mask, interaction, new_feature = input
+        batch_size = interaction.size(0) #(64, 20)
 
-        batch_size = interaction.size(0)
-
-        # Embedding
-        embed_interaction = self.embedding_interaction(interaction) #interaction의 값은 0/1/2 중 하나이다.
-        embed_test = self.embedding_test(test)                #shape = (64,20,21)
-        embed_question = self.embedding_question(question)
-        embed_tag = self.embedding_tag(tag)
+        ######## Embedding ########
+        embed_big_category = self.embedding_big_category(big_category.type(torch.cuda.IntTensor))                #shape = (64,20,21)
+        embed_mid_category = self.embedding_mid_category(mid_category.type(torch.cuda.IntTensor))
+        embed_problem_num = self.embedding_problem_num(problem_num.type(torch.cuda.IntTensor)) 
+        embed_interaction = self.embedding_interaction(interaction.type(torch.cuda.IntTensor))
+        embed_month = self.embedding_month(month.type(torch.cuda.IntTensor))
+        embed_dayname = self.embedding_dayname(dayname.type(torch.cuda.IntTensor))
+        # embed_new_feature = self.embedding_new_feature(new_feature)
 
         embed = torch.cat(
             [
+                embed_big_category,
+                embed_mid_category,
+                embed_problem_num,
                 embed_interaction,
-                embed_test,
-                embed_question,
-                embed_tag,
+                embed_month,
+                embed_dayname,
+                solvesec_600_NA.unsqueeze(2)
+                # embed_new_feature,
             ],
             2,
-        ) #shape = (64,20,84)
+        )
 
         X = self.comb_proj(embed) #(64,20,64)
 
@@ -82,14 +90,14 @@ class LSTMATTN(nn.Module):
         # Embedding
         # interaction은 현재 correct로 구성되어있다. correct(1, 2) + padding(0)
         self.embedding_interaction = nn.Embedding(3, self.hidden_dim // 3)
-        self.embedding_test = nn.Embedding(self.args.n_test + 1, self.hidden_dim // 3)
-        self.embedding_question = nn.Embedding(
-            self.args.n_questions + 1, self.hidden_dim // 3
-        )
-        self.embedding_tag = nn.Embedding(self.args.n_tag + 1, self.hidden_dim // 3)
-
+        self.embedding_big_category = nn.Embedding(self.args.n_big_category + 1, self.hidden_dim // 3)
+        self.embedding_mid_category = nn.Embedding(self.args.n_mid_category + 1, self.hidden_dim // 3)
+        self.embedding_problem_num = nn.Embedding(self.args.n_problem_num + 1, self.hidden_dim // 3)
+        self.embedding_month = nn.Embedding(self.args.n_month + 1, self.hidden_dim // 3)
+        self.embedding_dayname = nn.Embedding(self.args.n_dayname + 1, self.hidden_dim // 3)
+        
         # embedding combination projection
-        self.comb_proj = nn.Linear((self.hidden_dim // 3) * 4, self.hidden_dim)
+        self.comb_proj = nn.Linear((self.hidden_dim // 3) * 6+1, self.hidden_dim) # 원하는 차원으로 줄이기
 
         self.lstm = nn.LSTM(
             self.hidden_dim, self.hidden_dim, self.n_layers, batch_first=True
@@ -114,23 +122,29 @@ class LSTMATTN(nn.Module):
 
     def forward(self, input):
 
-        test, question, tag, _, mask, interaction = input
+        big_category, mid_category, problem_num, _, month, dayname, solvesec_600_NA, mask, interaction = input
         # test, question, tag, _, mask, interaction, new_feature = input
+        batch_size = interaction.size(0) #(64, 20)
 
-        batch_size = interaction.size(0)
-
-        # Embedding
-        embed_interaction = self.embedding_interaction(interaction)
-        embed_test = self.embedding_test(test)
-        embed_question = self.embedding_question(question)
-        embed_tag = self.embedding_tag(tag)
+        ######## Embedding ########
+        embed_big_category = self.embedding_big_category(big_category.type(torch.cuda.IntTensor))                #shape = (64,20,21)
+        embed_mid_category = self.embedding_mid_category(mid_category.type(torch.cuda.IntTensor))
+        embed_problem_num = self.embedding_problem_num(problem_num.type(torch.cuda.IntTensor)) 
+        embed_interaction = self.embedding_interaction(interaction.type(torch.cuda.IntTensor))
+        embed_month = self.embedding_month(month.type(torch.cuda.IntTensor))
+        embed_dayname = self.embedding_dayname(dayname.type(torch.cuda.IntTensor))
+        # embed_new_feature = self.embedding_new_feature(new_feature)
 
         embed = torch.cat(
             [
+                embed_big_category,
+                embed_mid_category,
+                embed_problem_num,
                 embed_interaction,
-                embed_test,
-                embed_question,
-                embed_tag,
+                embed_month,
+                embed_dayname,
+                solvesec_600_NA.unsqueeze(2)
+                # embed_new_feature,
             ],
             2,
         )

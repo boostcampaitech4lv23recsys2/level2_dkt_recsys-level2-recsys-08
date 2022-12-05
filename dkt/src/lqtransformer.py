@@ -17,7 +17,6 @@ def get_sinusoid_encoding_table(n_seq, d_hidn):
     return sinusoid_table
 
 def get_pos(seq_len):
-    # use sine positional embeddinds
     return torch.arange( seq_len ).unsqueeze(0).unsqueeze(2)
 
 class Feed_Forward_block(nn.Module):
@@ -56,7 +55,7 @@ class LQTransformer(nn.Module):
         ## arange positional embedding
         self.embedding_pos = get_pos(args.max_seq_len).to(args.device)
         self.comb_proj = nn.Linear((self.hidden_dim // 3) * 6+1, self.hidden_dim) # 원하는 차원으로 줄이기
-        #new_feature : self.comb_proj = nn.Linear((self.hidden_dim // 3) * 5, self.hidden_dim) # 원하는 차원으로 줄이기
+        # new_feature : self.comb_proj = nn.Linear((self.hidden_dim // 3) * 5, self.hidden_dim) # 원하는 차원으로 줄이기
 
         ######## query, key, value ########
         self.query = nn.Linear(in_features=(self.hidden_dim // 3) * 6+1, out_features=(self.hidden_dim // 3) * 6+1)

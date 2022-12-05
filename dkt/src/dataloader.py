@@ -51,27 +51,33 @@ class Preprocess:
             df = df[df['userID'] < 717]
         if not os.path.exists(self.args.asset_dir):
             os.makedirs(self.args.asset_dir)
+        all_df = pd.read_csv("/opt/ml/input/main_dir/dkt/asset/all_fe_df.csv")
+        
 
         for col in cate_cols:
+            exec(col + '2idx = {v:k for k,v in enumerate(all_df["' + col + '"].unique())}')
+            exec('df["' + col + '"] = df["' + col + '"].map(' + col + '2idx)')
 
-            le = LabelEncoder()
-            if is_train:
-                # For UNKNOWN class
-                a = df[col].unique().tolist() + ["unknown"]
-                le.fit(a)
-                self.__save_labels(le, col)
-            else:
-                label_path = os.path.join(self.args.asset_dir, col + "_classes.npy")
-                le.classes_ = np.load(label_path)
+        # for col in cate_cols:
 
-                df[col] = df[col].apply(
-                    lambda x: x if str(x) in le.classes_ else "unknown"
-                )
+        #     le = LabelEncoder()
+        #     if is_train:
+        #         # For UNKNOWN class
+        #         a = df[col].unique().tolist() + ["unknown"]
+        #         le.fit(a)
+        #         self.__save_labels(le, col)
+        #     else:
+        #         label_path = os.path.join(self.args.asset_dir, col + "_classes.npy")
+        #         le.classes_ = np.load(label_path)
 
-            # 모든 컬럼이 범주형이라고 가정
-            df[col] = df[col].astype(str)
-            test = le.transform(df[col])
-            df[col] = test
+        #         df[col] = df[col].apply(
+        #             lambda x: x if str(x) in le.classes_ else "unknown"
+        #         )
+
+        #     # 모든 컬럼이 범주형이라고 가정
+        #     df[col] = df[col].astype(str)
+        #     test = le.transform(df[col])
+        #     df[col] = test
 
         def convert_time(s):
             timestamp = time.mktime(
@@ -100,7 +106,7 @@ class Preprocess:
         if is_train == True:
             df = df[df['answerCode'] != -1]
         df = self.__feature_engineering(df, args, is_train)
-        df = self.__preprocessing(df, args, is_train)
+        # df = self.__preprocessing(df, args, is_train)
 
         # 추후 feature를 embedding할 시에 embedding_layer의 input 크기를 결정할때 사용
 

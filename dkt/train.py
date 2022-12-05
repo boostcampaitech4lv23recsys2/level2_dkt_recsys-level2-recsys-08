@@ -22,9 +22,9 @@ def main(args):
                                               #shape 중간의 4는 ["testID","assessmentItemID","knowledgeTag","answerCode"]+solvesec
     train_data, valid_data = preprocess.split_data(train_data)
     # answerCode가 -1제외 test데이터도 같이 학습
-    # preprocess.load_train_test_data(args)
-    # train_test_data = preprocess.get_train_test_data()
-    # train_data = np.concatenate((train_data, train_test_data), axis=0)
+    preprocess.load_train_test_data(args)
+    train_test_data = preprocess.get_train_test_data()
+    train_data = np.concatenate((train_data, train_test_data), axis=0)
 
     wandb.init(project="Sequential", entity = "recsys8", config=vars(args))
     wandb.run.name = f"{args.model}" # 표시되는 이름을 바꾸고 싶다면 해당 줄을 바꿔주세요
@@ -42,14 +42,15 @@ if __name__ == "__main__":
     remote_server_uri ="http://118.67.134.110:30005"
     mlflow.set_tracking_uri(remote_server_uri)
     
-    experiment_name = args.model
+    experiment_name = "같은 피처 여러 시퀀스모델들"
+    # experiment_name = args.model
     experiment = mlflow.get_experiment_by_name(experiment_name)
     if experiment == None:
         experiment = mlflow.set_experiment(experiment_name)
     client = mlflow.tracking.MlflowClient()
     
     run = client.create_run(experiment.experiment_id)
-    run_name = "🌈(12/04 Sun)["+args.model+"] 피처: 6개)"
+    run_name = "🌈(12/04 Sun)["+args.model+" -1제외 테스트데이터도 학습] 피처: 6개)"
 
     #🙂1. FE할 때 여기 고치세요!
     args.base_cols = ['userID','Timestamp','answerCode']
@@ -63,7 +64,8 @@ if __name__ == "__main__":
     with mlflow.start_run(run_name="tmp", run_id=run.info.run_id, description=desc):
         mlflow.set_tag("mlflow.runName", run_name)
         mlflow.set_tag('mlflow.user', 'lnh')
-        params = {"lr":args.lr,
+        params = {"model":args.model,
+                  "lr":args.lr,
                   "epoch":args.n_epochs,
                   "hidden_dim":args.hidden_dim,
                   "seq_len":args.max_seq_len,
