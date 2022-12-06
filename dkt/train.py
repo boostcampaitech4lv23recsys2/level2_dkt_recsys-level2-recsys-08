@@ -62,7 +62,7 @@ if __name__ == "__main__":
     args.train_df_csv = "/opt/ml/input/main_dir/dkt/asset/train_fe_df.csv"
     args.test_df_csv = "/opt/ml/input/main_dir/dkt/asset/test_fe_df.csv"
 
-    run_name = "🌈(12/06 Tue)["+args.model+"달 정보 빼기] 피처: "+str(len(args.used_cat_cols)+len(args.used_num_cols))+"개)"
+    run_name = "🌈(12/06 Tue)["+args.model+" 연속형변수 concat후 linear, layernorm] 피처: "+str(len(args.used_cat_cols)+len(args.used_num_cols))+"개)"
     desc = '사용한 피처 :' + ', '.join(args.used_cat_cols + args.used_num_cols)
 
     with mlflow.start_run(run_name="tmp", run_id=run.info.run_id, description=desc):
