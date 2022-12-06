@@ -5,21 +5,21 @@ import pandas as pd
 import torch
 
 
-def prepare_dataset(args, device, basepath, verbose=True, logger=None):
-    data = load_data(args, basepath)
+def prepare_dataset(itemnode, device, basepath, verbose=True, logger=None):
+    data = load_data(itemnode, basepath)
     train_data, test_data = separate_data(data)
-    id2index = indexing_data(args, data)
-    train_data_proc = process_data(args, train_data, id2index, device)
-    test_data_proc = process_data(args, test_data, id2index, device)
+    id2index = indexing_data(itemnode, data)
+    train_data_proc = process_data(itemnode, train_data, id2index, device)
+    test_data_proc = process_data(itemnode, test_data, id2index, device)
 
     if verbose:
-        print_data_stat(args, train_data, "Train", logger=logger)
-        print_data_stat(args, test_data, "Test", logger=logger)
+        print_data_stat(itemnode, train_data, "Train", logger=logger)
+        print_data_stat(itemnode, test_data, "Test", logger=logger)
 
     return train_data_proc, test_data_proc, len(id2index)
 
 
-def load_data(args, basepath):
+def load_data(itemnode, basepath):
     path1 = os.path.join(basepath, "train_data.csv")
     path2 = os.path.join(basepath, "test_data.csv")
     data1 = pd.read_csv(path1) #(2266586, 6)
@@ -27,7 +27,7 @@ def load_data(args, basepath):
 
     data = pd.concat([data1, data2]) #(2526700, 6)
     data.drop_duplicates(            #(2476706, 6)
-        subset=["userID", args.item_node], keep="last", inplace=True
+        subset=["userID", itemnode], keep="last", inplace=True
     )
 
     return data
@@ -40,10 +40,10 @@ def separate_data(data):
     return train_data, test_data
 
 
-def indexing_data(args, data):
+def indexing_data(itemnode, data):
     userid, itemid = (
         sorted(list(set(data.userID))),
-        sorted(list(set(data[args.item_node]))),
+        sorted(list(set(data[itemnode]))),
     )
     n_user, n_item = len(userid), len(itemid)
 
@@ -54,9 +54,9 @@ def indexing_data(args, data):
     return id_2_index
 
 
-def process_data(args, data, id_2_index, device):
+def process_data(itemnode, data, id_2_index, device):
     edge, label = [], []
-    for user, item, acode in zip(data.userID, data[args.item_node], data.answerCode):
+    for user, item, acode in zip(data.userID, data[itemnode], data.answerCode):
         uid, iid = id_2_index[user], id_2_index[item]
         edge.append([uid, iid])
         label.append(acode)
@@ -67,8 +67,8 @@ def process_data(args, data, id_2_index, device):
     return dict(edge=edge.to(device), label=label.to(device))
 
 
-def print_data_stat(args, data, name, logger):
-    userid, itemid = list(set(data.userID)), list(set(data[args.item_node]))
+def print_data_stat(itemnode, data, name, logger):
+    userid, itemid = list(set(data.userID)), list(set(data[itemnode]))
     n_user, n_item = len(userid), len(itemid)
 
     logger.info(f"{name} Dataset Info")
