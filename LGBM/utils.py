@@ -159,9 +159,9 @@ def apply_elo_granularity_feature_name(df, granularity_feature_name):
 
     prob = [
         gou_func(student_parameters[student]["theta"], item_parameters[item]["beta"])
-        for student, item in zip(df.userID.values, df.assessmentItemID.values)
+        for student, item in zip(df.userID.values, df[granularity_feature_name].values)
     ]
 
-    df["elo"] = prob
+    df[f"elo_{granularity_feature_name}"] = prob
 
     return df
