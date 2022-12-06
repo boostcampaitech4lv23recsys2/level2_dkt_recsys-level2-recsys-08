@@ -53,7 +53,9 @@ class LQTransformer(nn.Module):
         # self.embedding_pos =  torch.FloatTensor(self.embedding_pos).to(args.device)
         ## arange positional embedding
         self.embedding_pos = get_pos(args.max_seq_len).to(args.device)
-        self.comb_proj = nn.Linear((self.hidden_dim // 3) * 4, self.hidden_dim) # 원하는 차원으로 줄이기
+        self.cat_proj = nn.Linear((self.hidden_dim // 3) * 4, self.hidden_dim) # 원하는 차원으로 줄이기
+        self.num_proj = nn.Sequential(nn.Linear(8, self.hidden_dim//2),
+                                      nn.LayerNorm(self.hidden_dim//2))
         #new_feature : self.comb_proj = nn.Linear((self.hidden_dim // 3) * 5, self.hidden_dim) # 원하는 차원으로 줄이기
 
         ######## query, key, value ########
@@ -108,7 +110,7 @@ class LQTransformer(nn.Module):
         embed_interaction = self.embedding_interaction(interaction) #interaction의 값은 0/1/2 중 하나이다.
         # embed_new_feature = self.embedding_new_feature(new_feature)
 
-        embed = torch.cat(
+        embed_cat = torch.cat(
             [
                 embed_interaction,
                 embed_test,
@@ -119,9 +121,24 @@ class LQTransformer(nn.Module):
             2,
         )
 
-        embed = self.comb_proj(embed) #64,20,64
-        embed = embed + self.embedding_pos #(64,20,64) (batch,seq,dim)
-        # embed = nn.Dropout(0.1)(embed)
+        embed_cat = self.cat_proj(embed_cat) #64,20,64
+
+        #####😘 연속형 변수 추가 시 #####
+        # 주의할 점 : cat_proj와 num_proj의 out_dim을 각각 hidden_dim//2로 하기,
+        #           137줄 embed_cat 대신 embed로 바꾸기
+        #           __init__의 self.num_proj도 수정하기
+        
+        # embed_num = torch.cat(
+        #     [
+        #     num_feature1.unsqueeze(2),
+        #     num_feature2.unsqueeze(2)
+        #     ],
+        #     2,
+        # )
+        # embed_num = self.num_proj(embed_num)
+        # embed = torch.cat([embed_cat, embed_num], 2)
+
+        embed_cat = embed_cat + self.embedding_pos #(64,20,64) (batch,seq,dim)
 
         ######## Encoder ########
         q = self.query(embed)[:, -1:, :]#.permute(1, 0, 2)
