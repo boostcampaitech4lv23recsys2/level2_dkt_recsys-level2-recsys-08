@@ -31,7 +31,9 @@ def main(args):
     logger.info("[1/1] Data Preparing - Done")
 
     logger.info("[2/2] Model Building - Start")
-    model = build(args,
+    
+    itemnode = args.item_node
+    model = build(itemnode,
         n_node,
         embedding_dim=CFG.embedding_dim,
         num_layers=CFG.num_layers,

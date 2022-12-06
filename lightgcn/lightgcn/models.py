@@ -8,11 +8,13 @@ from sklearn.metrics import accuracy_score, roc_auc_score
 from torch_geometric.nn.models import LightGCN
 from .utils import setSeeds
 
-def build(args, n_node, weight=None, logger=None, **kwargs):
+def build(itemnode, n_node, weight=None, logger=None, **kwargs):
     model = LightGCN(n_node, **kwargs)
     
-    # if args.item_node != "assessmentItemID":
-    #     weight = "./weight/" + args.item_node + "_best_model.pt"
+    # if itemnode != "assessmentItemID":
+    #     weight = "/opt/ml/dkt_team/code/lightgcn/weight/" + itemnode + "_best_model.pt"
+    # else :
+    #     weight = "/opt/ml/dkt_team/code/lightgcn/weight/best_model.pt"
         
     if weight:
         if not os.path.isfile(weight):
