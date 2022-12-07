@@ -5,6 +5,7 @@ class CatBoostModel:
         self.output_dir = output_dir
         self.model = CatBoostClassifier(iterations=args.iteration,
                                         random_seed=args.seed,
+                                        custom_metric=["AUC", "Accuracy"],
                                         eval_metric="AUC",
                                         early_stopping_rounds=args.early_stopping,
                                         train_dir=self.output_dir,

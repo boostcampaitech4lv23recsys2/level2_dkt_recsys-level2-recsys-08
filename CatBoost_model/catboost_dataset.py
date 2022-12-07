@@ -9,14 +9,12 @@ class CBDataset:
         self.cat_features = features.CAT_FEAT
         self.num_features = list(set(self.features) - set(self.cat_features))
         self.df = pd.read_pickle(data_path)
-        
-        self.descript = f"{len(self.features)}_features"
-    
-    def split_data(self, pseudo_labeling=False):
+            
+    def split_data(self):
         self._convert_cat_features_dtype()
         self._convert_num_features_dtype()
         
-        train_valid_df = self.get_train_data(pseudo_labeling)
+        train_valid_df = self.get_train_data()
         
         valid = train_valid_df[(train_valid_df.userID != train_valid_df.userID.shift(-1)) &
                                (train_valid_df["kind"] == "train")]
@@ -27,10 +25,7 @@ class CBDataset:
         
         return X_train, X_valid, y_train, y_valid
     
-    def get_train_data(self, pseudo_labeling=False):
-        if pseudo_labeling:
-            # self.df[self.df.answer == -1] = correct answer
-            pass
+    def get_train_data(self):
         return self.df[self.df.answerCode != -1]
     
     def get_test_data(self):

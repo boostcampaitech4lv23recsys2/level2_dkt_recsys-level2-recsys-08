@@ -38,8 +38,8 @@ def seed_everythings(seed):
 
 def main(args):
     # MLflow ---------------
-    run_name="(3) 재현"
-    desc="DKT Catboost w/ n features"
+    run_name="Catboost 정제된 피쳐"
+    desc="Catboost"
     # -------------------------
     with mlflow.start_run(run_name=run_name, description=desc, experiment_id=experiment_id) as run:
         # dataset
@@ -91,7 +91,7 @@ def main(args):
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
 
-    parser.add_argument("--data_dir", type=str, default="/opt/ml/input/data/catboost_data_2.pkl")
+    parser.add_argument("--data_dir", type=str, default="/opt/ml/input/data/catboost_data_3.pkl")
     parser.add_argument("--inference_dir", type=str, default="/opt/ml/input/data/sample_submission.csv")
 
     parser.add_argument("--output_dir", type=str, default="/opt/ml/input/code/CatBoost_model/catboost_output")
