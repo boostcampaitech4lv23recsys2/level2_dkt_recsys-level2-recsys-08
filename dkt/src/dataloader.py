@@ -125,10 +125,7 @@ class Preprocess:
         df = df.sort_values(by=["userID", "Timestamp"], axis=0)
         
         #🙂2. FE할 때 여기 고치세요! 주의할 점 : userID와 answerCode 잊지마세요
-        columns = ['userID', 'testId','assessmentItemID', 'big_category', 'mid_category',\
-                    'problem_num', 'answerCode', 'month', 'dayname', 'solvesec_600', \
-                    'KnowledgeTag','big_mean', 'big_std','tag_mean', 'tag_std', \
-                    'test_mean', 'test_std','month_mean']
+        columns = ['userID', 'answerCode'] + args.cat_cols + args.num_cols
         # columns = ['userID', 'assessmentItemID', 'testId', 'answerCode', 'KnowledgeTag','new_feature']
         
         #🙂3. FE할 때 여기 고치세요! 주의할 점 : answerCode 위치는 4번째에 적어주세요
@@ -137,25 +134,32 @@ class Preprocess:
             .groupby("userID")
             .apply(
                 lambda r: (
-
-                    r["testId"].values,
                     r["assessmentItemID"].values,
-                    r["big_category"].values,
+                    r["testId"].values,
+                    r["KnowledgeTag"].values,
                     r["answerCode"].values,
+                    r["big_category"].values,
                     r["mid_category"].values,
                     r["problem_num"].values,
-                    r["month"].values,
-                    r["dayname"].values,
-                    r["solvesec_600"].values,
-                    r['KnowledgeTag'].values,
-                    r['big_mean'].values,
-                    r['big_std'].values,
-                    r['tag_mean'].values,
-                    r['tag_std'].values,
-                    r['test_mean'].values,
-                    r['test_std'].values,
-                    r['month_mean'].values,
-                    # r["new_feature"].values,
+                    r["time_category"].values,
+                    r["solvecumsum_category"].values,
+
+                    r["solvesec_3600"].values,
+                    r["solvesec_cumsum"].values,
+                    r["test_mean"].values,
+                    r["test_std"].values,
+                    r["tag_mean"].values,
+                    r["tag_std"].values,
+                    r["big_mean"].values,
+                    r["big_std"].values,
+                    r["big_sum"].values,
+                    r["assess_mean"].values,
+                    r["assess_std"].values,
+                    r["user_mean"].values,
+                    r["user_std"].values,
+                    r["user_sum"].values,
+                    r["assess_count"].values,
+                    
                 )
             )
         )
@@ -183,15 +187,18 @@ class DKTDataset(torch.utils.data.Dataset):
         seq_len = len(row[0])
         
         #🙂4. FE할 때 여기 고치세요! 주의할 점 : 3.과정(group) 순서 그대로 적어주세요!
-        testId,assessmentItemID, big_category, answerCode, mid_category,\
-        problem_num, month, dayname, solvesec_600, \
-        KnowledgeTag, big_mean, big_std, tag_mean, tag_std, \
-        test_mean, test_std, month_mean = row
-        cols = [testId,assessmentItemID,big_category, answerCode, mid_category,\
-                    problem_num, month, dayname, solvesec_600, \
-                    KnowledgeTag, big_mean, big_std,tag_mean, tag_std, \
-                    test_mean, test_std, month_mean]
+        assessmentItemID, testId, KnowledgeTag, answerCode, \
+        big_category, mid_category, problem_num, time_category, solvecumsum_category, \
+        solvesec_3600, solvesec_cumsum, test_mean, test_std, \
+        tag_mean, tag_std, big_mean, big_std, big_sum, assess_mean, assess_std, \
+        user_mean, user_std, user_sum, assess_count = row
 
+        cols = [assessmentItemID, testId, KnowledgeTag, answerCode, \
+        big_category, mid_category, problem_num, time_category, solvecumsum_category, \
+        solvesec_3600, solvesec_cumsum, test_mean, test_std, \
+        tag_mean, tag_std, big_mean, big_std, big_sum, assess_mean, assess_std, \
+        user_mean, user_std, user_sum, assess_count]
+        
         #test, question, tag, correct, new_feature = row[0], row[1], row[2], row[3], row[4]
         #cols = [test, question, tag, correct, new_feature]
 

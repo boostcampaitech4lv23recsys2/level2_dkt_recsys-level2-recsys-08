@@ -54,15 +54,21 @@ if __name__ == "__main__":
 
     #🙂1. FE할 때 여기 고치세요!
     args.base_cols = ['userID','Timestamp','answerCode']
-    args.cat_cols = ['testId','assessmentItemID','KnowledgeTag','big_category','mid_category','problem_num', 'month', 'dayname']
-    args.num_cols = ['solvesec_600', 'big_mean', 'big_std','tag_mean', 'tag_std','test_mean', 'test_std','month_mean']
+    args.cat_cols = ['assessmentItemID', 'testId', 'KnowledgeTag', 'big_category', 'mid_category', 'problem_num',\
+                     'time_category', 'solvecumsum_category']
+    args.num_cols =['solvesec_3600', 'solvesec_cumsum', 'test_mean', 'test_std', \
+                    'tag_mean', 'tag_std', 'big_mean', 'big_std', 'big_sum', 'assess_mean', 'assess_std', \
+                    'user_mean', 'user_std', 'user_sum', 'assess_count']
     
-    args.used_cat_cols = ['TestId','assessmentItemID','KnowledgeTag','big_category','mid_category','problem_num', 'month', ]#'dayname']
-    args.used_num_cols = ['solvesec_600', 'big_mean', 'big_std','tag_mean', 'tag_std','test_mean', 'test_std',]#'month_mean']
+    args.used_cat_cols = ['assessmentItemID', 'testId', 'KnowledgeTag', 'big_category', 'mid_category', 'problem_num',\
+                        'time_category', 'solvecumsum_category']
+    args.used_num_cols = ['solvesec_3600', 'solvesec_cumsum', 'test_mean', 'test_std', \
+                        'tag_mean', 'tag_std', 'big_mean', 'big_std', 'big_sum', 'assess_mean', 'assess_std', \
+                        'user_mean', 'user_std', 'user_sum', 'assess_count']
     args.train_df_csv = "/opt/ml/input/main_dir/dkt/asset/train_fe_df.csv"
     args.test_df_csv = "/opt/ml/input/main_dir/dkt/asset/test_fe_df.csv"
 
-    run_name = "🌈(12/06 Tue)["+args.model+" 연속형변수 concat후 linear, layernorm] 피처: "+str(len(args.used_cat_cols)+len(args.used_num_cols))+"개)"
+    run_name = "🌈(12/06 Tue)["+args.model+"]augment:+"+str(args.window)+" 피처: "+str(len(args.used_cat_cols)+len(args.used_num_cols))+"개)"
     desc = '사용한 피처 :' + ', '.join(args.used_cat_cols + args.used_num_cols)
 
     with mlflow.start_run(run_name="tmp", run_id=run.info.run_id, description=desc):
