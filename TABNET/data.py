@@ -53,7 +53,7 @@ def time_feature_engineering(df):
     df['Time'] = df['Timestamp'].apply(lambda x: int(time.mktime(x.timetuple())))
     df['Timediff'] = df.groupby(['userID','testId','assess_count'])['Time'].diff()
     df = df.fillna(0)
-    df['Timediff'] = df['Timediff'].apply(lambda x : x if x < 650 else 650)
+    df['Timediff'] = df['Timediff'].apply(lambda x : x if x < 650 else 0)
     df['Timepassed'] = df.groupby(['userID','testId','assess_count'])['Timediff'].cumsum()
     timediff = df.groupby('Timediff').agg({'answerCode':percentile}).reset_index()
     timediff.columns =['Timediff','Time_answer_rate']

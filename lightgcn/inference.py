@@ -25,12 +25,20 @@ def main():
     logger.info("[1/4] Data Preparing - Done")
 
     logger.info("[2/4] Model Building - Start")
-    model = build(
+    
+    itemnode = CFG.itemnode
+    
+    if itemnode != 'assessmentItemID':
+        weight = "/opt/ml/dkt_team/code/lightgcn/weight/" + itemnode + "_best_model.pt"
+    else:
+        weight = "/opt/ml/dkt_team/code/lightgcn/weight/best_model.pt"
+        
+    model = build(itemnode,
         n_node,
-        embedding_dim=CFG.embedding_dim,
-        num_layers=CFG.num_layers,
+        embedding_dim=128 if itemnode == 'assessmentItemID' else 256 ,
+        num_layers=1 if itemnode == 'assessmentItemID' else 2,
         alpha=CFG.alpha,
-        weight=CFG.weight,
+        weight=weight,
         logger=logger.getChild("build"),
         **CFG.build_kwargs
     )

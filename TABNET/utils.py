@@ -34,6 +34,7 @@ def plot_explain(explain,FEATS):
             pcm = ax.pcolor(explain[i],vmin = 0, vmax = 1)
             ax.set_xticks(np.arange(len(FEATS[:-1]))+0.5)
             ax.set_xticklabels(FEATS[:-1], rotation=45, ha='right')
+        plt.tight_layout()
         plt.savefig('./temp')
     else :
         fig, ax = plt.subplots(1,1,figsize = (10,5))
@@ -41,14 +42,32 @@ def plot_explain(explain,FEATS):
         pcm = ax.pcolor(explain,vmin = 0, vmax = 1)
         ax.set_xticks(np.arange(len(FEATS[:-1]))+0.5)
         ax.set_xticklabels(FEATS[:-1], rotation=45, ha='right')
+        plt.tight_layout()
         plt.savefig('./temp')
 
-def mlflow_image(explain,masks,FEATS,experiment_id):
+def fi_image(feat_importances,indices,FEATS,experiment_id):
+    plt.figure()
+    plt.title("Feature importances")
+    plt.barh(range(len(feat_importances)), feat_importances[indices],
+        color="r", align="center")
+    # If you want to define your own labels,
+    # change indices to a list of labels on the following line.
+    plt.yticks(range(len(feat_importances)), [FEATS[idx] for idx in indices])
+    plt.ylim([-1, len(feat_importances)])
+    plt.tight_layout()
+    plt.savefig('./temp',pad_inches = 0.5)
+    image = Image.open('./temp.png')
+    run_id = mlflow.last_active_run().info.run_id
+    with mlflow.start_run(run_id = run_id,experiment_id = experiment_id):
+        mlflow.log_image(image, 'Feature_importance'+'.png')
+
+def explain_image(explain,masks,FEATS,experiment_id):
     a = []
     a.append(explain)
-    for i in range(3):
+    b = ['explain']
+    for i in range(len(masks)):
         a.append(masks[i])
-    b = ['explain','mask0','mask1','mask2']
+        b.append('mask'+str(i))
     run_id = mlflow.last_active_run().info.run_id
     for img,name in zip(a,b):
         plot_explain(img,FEATS)
