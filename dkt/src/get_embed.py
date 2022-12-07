@@ -93,8 +93,8 @@ def get_embed(itemnode):
         
     model = build(itemnode,
         n_node,
-        embedding_dim=CFG.embedding_dim,
-        num_layers=CFG.num_layers,
+        embedding_dim=128 if itemnode == 'assessmentItemID' else 256 ,
+        num_layers=1 if itemnode == 'assessmentItemID' else 2,
         alpha=CFG.alpha,
         weight=weight,
         logger=logger.getChild("build"),

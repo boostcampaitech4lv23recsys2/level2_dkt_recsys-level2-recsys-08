@@ -11,6 +11,7 @@ if CFG.user_wandb:
     import wandb
 
     wandb.init(**CFG.wandb_kwargs, config=class2dict(CFG))
+    # config = wandb.config
     wandb.run.name = f"lightGCN_jhl" # 표시되는 이름을 바꾸고 싶다면 해당 줄을 바꿔주세요
     wandb.run.save()
 
@@ -21,18 +22,18 @@ device = torch.device("cuda" if use_cuda else "cpu")
 print(f'device : {device}')
 
 
-def main(args):
+def main(itemnode):
     logger.info("Task Started")
 
     logger.info("[1/1] Data Preparing - Start")
-    train_data, test_data, n_node = prepare_dataset(args,
+    
+    train_data, test_data, n_node = prepare_dataset(itemnode,
         device, CFG.basepath, verbose=CFG.loader_verbose, logger=logger.getChild("data")
     )
     logger.info("[1/1] Data Preparing - Done")
 
     logger.info("[2/2] Model Building - Start")
     
-    itemnode = args.item_node
     model = build(itemnode,
         n_node,
         embedding_dim=CFG.embedding_dim,
@@ -49,7 +50,7 @@ def main(args):
     logger.info("[2/2] Model Building - Done")
 
     logger.info("[3/3] Model Training - Start")
-    train(args,
+    train(itemnode,
         model,
         train_data,
         n_epoch=CFG.n_epoch,
@@ -64,13 +65,14 @@ def main(args):
 
 
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser(description='parser')
-    arg = parser.add_argument
+    # parser = argparse.ArgumentParser(description='parser')
+    # arg = parser.add_argument
     
-    parser.add_argument("--item_node", default="assessmentItemID", type=str, help="item node")
+    # parser.add_argument("--item_node", default="assessmentItemID", type=str, help="item node")
     # parser.add_argument("--item_node", default="testId", type=str, help="item node")
     
-    args = parser.parse_args()
+    # args = parser.parse_args()
+    itemnode = CFG.itemnode
     
     remote_server_uri ="http://118.67.134.110:30005"
     mlflow.set_tracking_uri(remote_server_uri)
@@ -82,10 +84,10 @@ if __name__ == "__main__":
     client = mlflow.tracking.MlflowClient()
     
     run = client.create_run(experiment.experiment_id)
-    run_name = "🌈(12/05 Mon)[lightGCN_" + args.item_node + "]"
+    run_name = "🌈(12/05 Mon)[lightGCN_" + itemnode + "]"
 
     #🙂1. FE할 때 여기 고치세요!
-    columns = [args.item_node]
+    columns = [itemnode]
     desc = '사용한 피처 :' + ', '.join(columns)
 
     with mlflow.start_run(run_id=run.info.run_id, run_name=run_name, description=desc):
@@ -98,4 +100,4 @@ if __name__ == "__main__":
                   }
         mlflow.log_params(params)
 
-        main(args)
+        main(itemnode)

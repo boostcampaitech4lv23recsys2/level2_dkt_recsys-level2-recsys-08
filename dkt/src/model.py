@@ -1,5 +1,9 @@
+
+import os
 import torch
 import torch.nn as nn
+import numpy as np
+from .get_embed import get_embed
 
 try:
     from transformers.modeling_bert import BertConfig, BertEncoder, BertModel
@@ -10,6 +14,15 @@ except:
         BertModel,
     )
 
+import sys
+sys.path.append(os.path.dirname(os.path.abspath(os.path.dirname(os.path.abspath(os.path.dirname(__file__))))))
+
+from lightgcn.config import CFG, logging_conf
+from lightgcn.lightgcn.utils import class2dict, get_logger
+
+logger = get_logger(logging_conf)
+use_cuda = torch.cuda.is_available() and CFG.use_cuda_if_available
+device = torch.device("cuda" if use_cuda else "cpu")
 
 class LSTM(nn.Module):
     #new_feature 를 추가하고 싶으시면, embedding 부분만 바꾸면 됩니다.
@@ -37,7 +50,40 @@ class LSTM(nn.Module):
 
         # Fully connected layer
         self.fc = nn.Linear(self.hidden_dim, 1)
+        
+        # lightGCN embed matrix와 id2index
+        self.test_embed_matrix, self.test_n_user = get_embed('testId')
+        self.question_embed_matrix, self.question_n_user = get_embed('assessmentItemID')
+        
+        # 다른 임베딩 벡터들과 차원 맞춰주기
+        ## assessmentItemID
+        self.lgcn_linear = nn.Linear(128, self.hidden_dim // 3)
+        ## testId
+        self.lgcn_linear_test = nn.Linear(256, self.hidden_dim // 3)
+        
+    # 문제 lgcn embedding 구하기
+    def lgcn_embedding(self, itemnode, item):
+        item = item.detach().cpu().numpy()
+        
+        if itemnode == 'testId':
+            embed_matrix, n_user = self.test_embed_matrix, self.test_n_user
+        else:
+            embed_matrix, n_user = self.question_embed_matrix, self.question_n_user
+        embed_matrix = embed_matrix.detach().cpu().numpy()
+        
+        len_user = n_user - 1
 
+        item_embed = []
+        for user in item:
+            user_li = []
+            for i in user:
+                user_li.append(embed_matrix[len_user + i])
+            item_embed.append(user_li)
+
+        item_embed = torch.Tensor(np.array(item_embed))
+        
+        return item_embed
+    
     def forward(self, input):
 
         test, question, tag, _, mask, interaction = input #(test, question, tag, correct, mask, interaction)
@@ -47,8 +93,15 @@ class LSTM(nn.Module):
 
         # Embedding
         embed_interaction = self.embedding_interaction(interaction) #interaction의 값은 0/1/2 중 하나이다.
-        embed_test = self.embedding_test(test)                #shape = (64,20,21)
-        embed_question = self.embedding_question(question)
+        
+        # embed_test = self.embedding_test(test)                #shape = (64,20,21)
+        embed_test = self.lgcn_embedding('testId', test).to(device)
+        embed_test = self.lgcn_linear_test(embed_test)
+        
+        # embed_question = self.embedding_question(question)
+        embed_question = self.lgcn_embedding('assessmentItemID', question).to(device)
+        embed_question = self.lgcn_linear(embed_question)
+        
         embed_tag = self.embedding_tag(tag)
 
         embed = torch.cat(
@@ -111,7 +164,40 @@ class LSTMATTN(nn.Module):
         self.fc = nn.Linear(self.hidden_dim, 1)
 
         self.activation = nn.Sigmoid()
+        
+        # lightGCN embed matrix와 id2index
+        self.test_embed_matrix, self.test_n_user = get_embed('testId')
+        self.question_embed_matrix, self.question_n_user = get_embed('assessmentItemID')
+        
+        # 다른 임베딩 벡터들과 차원 맞춰주기
+        ## assessmentItemID
+        self.lgcn_linear = nn.Linear(128, self.hidden_dim // 3)
+        ## testId
+        self.lgcn_linear_test = nn.Linear(256, self.hidden_dim // 3)
 
+    # 문제 lgcn embedding 구하기
+    def lgcn_embedding(self, itemnode, item):
+        item = item.detach().cpu().numpy()
+        
+        if itemnode == 'testId':
+            embed_matrix, n_user = self.test_embed_matrix, self.test_n_user
+        else:
+            embed_matrix, n_user = self.question_embed_matrix, self.question_n_user
+        embed_matrix = embed_matrix.detach().cpu().numpy()
+        
+        len_user = n_user - 1
+
+        item_embed = []
+        for user in item:
+            user_li = []
+            for i in user:
+                user_li.append(embed_matrix[len_user + i])
+            item_embed.append(user_li)
+
+        item_embed = torch.Tensor(np.array(item_embed))
+        
+        return item_embed
+    
     def forward(self, input):
 
         test, question, tag, _, mask, interaction = input
@@ -121,8 +207,15 @@ class LSTMATTN(nn.Module):
 
         # Embedding
         embed_interaction = self.embedding_interaction(interaction)
-        embed_test = self.embedding_test(test)
-        embed_question = self.embedding_question(question)
+        
+        # embed_test = self.embedding_test(test)
+        embed_test = self.lgcn_embedding('testId', test).to(device)
+        embed_test = self.lgcn_linear_test(embed_test)
+        
+        # embed_question = self.embedding_question(question)
+        embed_question = self.lgcn_embedding('assessmentItemID', question).to(device)
+        embed_question = self.lgcn_linear(embed_question)
+        
         embed_tag = self.embedding_tag(tag)
 
         embed = torch.cat(
@@ -193,7 +286,40 @@ class Bert(nn.Module):
         self.fc = nn.Linear(self.args.hidden_dim, 1)
 
         self.activation = nn.Sigmoid()
+        
+        # lightGCN embed matrix와 id2index
+        self.test_embed_matrix, self.test_n_user = get_embed('testId')
+        self.question_embed_matrix, self.question_n_user = get_embed('assessmentItemID')
+        
+        # 다른 임베딩 벡터들과 차원 맞춰주기
+        ## assessmentItemID
+        self.lgcn_linear = nn.Linear(128, self.hidden_dim // 3)
+        ## testId
+        self.lgcn_linear_test = nn.Linear(256, self.hidden_dim // 3)
 
+    # 문제 lgcn embedding 구하기
+    def lgcn_embedding(self, itemnode, item):
+        item = item.detach().cpu().numpy()
+        
+        if itemnode == 'testId':
+            embed_matrix, n_user = self.test_embed_matrix, self.test_n_user
+        else:
+            embed_matrix, n_user = self.question_embed_matrix, self.question_n_user
+        embed_matrix = embed_matrix.detach().cpu().numpy()
+        
+        len_user = n_user - 1
+
+        item_embed = []
+        for user in item:
+            user_li = []
+            for i in user:
+                user_li.append(embed_matrix[len_user + i])
+            item_embed.append(user_li)
+
+        item_embed = torch.Tensor(np.array(item_embed))
+        
+        return item_embed
+    
     def forward(self, input):
         test, question, tag, _, mask, interaction = input #(test, question, tag, correct, mask, interaction)
         # test, question, tag, _, mask, interaction, new_feature = input
@@ -204,8 +330,13 @@ class Bert(nn.Module):
 
         embed_interaction = self.embedding_interaction(interaction)
 
-        embed_test = self.embedding_test(test)
-        embed_question = self.embedding_question(question)
+        # embed_test = self.embedding_test(test)
+        embed_test = self.lgcn_embedding('testId', test).to(device)
+        embed_test = self.lgcn_linear_test(embed_test)
+        
+        # embed_question = self.embedding_question(question)
+        embed_question = self.lgcn_embedding('assessmentItemID', question).to(device)
+        embed_question = self.lgcn_linear(embed_question)
 
         embed_tag = self.embedding_tag(tag)
 
