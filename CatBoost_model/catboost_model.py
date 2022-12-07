@@ -33,3 +33,6 @@ class CatBoostModel:
 
     def gat_best_iter(self):
         return self.model.best_iteration_
+
+    def save_model_(self):
+        return self.model.save_model('model')
