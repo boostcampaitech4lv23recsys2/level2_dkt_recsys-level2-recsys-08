@@ -35,15 +35,15 @@ class Feed_Forward_block(nn.Module):
 class LQTransformer(nn.Module):
     def init_hidden(self, batch_size):
         h = torch.zeros(
-            # self.args.n_layers,
-            1,
+            self.args.n_layers,
+            # 1,
             batch_size,
             self.hidden_dim)
         h = h.to(self.args.device)
 
         c = torch.zeros(
-            # self.args.n_layers,
-            1,
+            self.args.n_layers,
+            # 1,
             batch_size,
             self.hidden_dim)
         c = c.to(self.args.device)
@@ -74,17 +74,19 @@ class LQTransformer(nn.Module):
         self.attn = nn.MultiheadAttention( embed_dim= self.hidden_dim, num_heads= 1, batch_first = True, dropout=0.1)     # multihead attention    ## todo add dropout, LayerNORM
         
         ######## lstm ########
-        self.lstm = nn.LSTM(input_size= self.hidden_dim, hidden_size = self.hidden_dim, num_layers=1, batch_first = True)
+        self.lstm = nn.LSTM(input_size= self.hidden_dim, hidden_size = self.hidden_dim, num_layers=self.args.n_layers, batch_first = True)
 
         ######## layer norm ########
         self.layer_norm1 = nn.LayerNorm(self.hidden_dim)
         self.layer_norm2 = nn.LayerNorm(self.hidden_dim)
-
         
         ######## feed-forward ########
         self.ffn = Feed_Forward_block(self.hidden_dim, 6*self.hidden_dim)  
         
         ######## fully connect ########
+        # self.fc = nn.Sequential(
+        #             nn.Linear(in_features=self.hidden_dim, out_features=self.hidden_dim),
+        #             nn.Linear(in_features=self.hidden_dim, out_features=1))
         self.fc = nn.Linear(in_features=self.hidden_dim, out_features=1)
        
         self.activation = nn.Sigmoid()
@@ -107,6 +109,8 @@ class LQTransformer(nn.Module):
         self.cat_proj = nn.Linear((self.third_hidden_dim) * (9), self.hidden_dim//2) # 원하는 차원으로 줄이기
         self.num_proj = nn.Sequential(nn.Linear(8, self.hidden_dim//2),
                                     nn.LayerNorm(self.hidden_dim//2))
+
+        self.batch_norm = nn.BatchNorm1d(64, affine=True)
 
     def forward(self, input):
 
@@ -158,9 +162,14 @@ class LQTransformer(nn.Module):
                      test_std.unsqueeze(2),
                      month_mean.unsqueeze(2)]
         embed_num = torch.cat(embed_num, 2)
+
         embed_num = self.num_proj(embed_num)
+        embed_num = self.batch_norm(embed_num.permute(0, 2, 1))
+        embed_num = embed_num.permute(0, 2, 1)
 
         embed = torch.cat([embed_cat, embed_num], 2)
+
+        #========= 여기까지 복사!! ==========#
 
         embed = embed + self.embedding_pos #(64,20,64) (batch,seq,dim)
 

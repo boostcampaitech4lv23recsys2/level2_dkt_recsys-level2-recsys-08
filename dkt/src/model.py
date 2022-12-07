@@ -48,6 +48,8 @@ class LSTM(nn.Module):
         self.num_proj = nn.Sequential(nn.Linear(8, self.hidden_dim//2),
                                     nn.LayerNorm(self.hidden_dim//2))
 
+        self.batch_norm = nn.BatchNorm1d(64, affine=True)
+
     def forward(self, input):
 
         #😘3.FE할 때 여기
@@ -98,9 +100,14 @@ class LSTM(nn.Module):
                      test_std.unsqueeze(2),
                      month_mean.unsqueeze(2)]
         embed_num = torch.cat(embed_num, 2)
+
         embed_num = self.num_proj(embed_num)
+        embed_num = self.batch_norm(embed_num.permute(0, 2, 1))
+        embed_num = embed_num.permute(0, 2, 1)
 
         embed = torch.cat([embed_cat, embed_num], 2)
+
+        #========= 여기까지 복사!! ==========#
 
         out, _ = self.lstm(embed) #hidden, cell state 반환                 #out.shape = (64,20,64)
         out = out.contiguous().view(batch_size, -1, self.hidden_dim)
@@ -136,7 +143,10 @@ class LSTMATTN(nn.Module):
         self.attn = BertEncoder(self.config)
 
         # Fully connected layer
-        self.fc = nn.Linear(self.hidden_dim, 1)
+        self.fc = nn.Sequential(
+            nn.Linear(in_features=self.hidden_dim, out_features=self.hidden_dim),
+            nn.Linear(in_features=self.hidden_dim, out_features=1))
+        # self.fc = nn.Linear(self.hidden_dim, 1)
 
         self.activation = nn.Sigmoid()
 
@@ -158,6 +168,8 @@ class LSTMATTN(nn.Module):
         self.cat_proj = nn.Linear((self.third_hidden_dim) * (9), self.hidden_dim//2) # 원하는 차원으로 줄이기
         self.num_proj = nn.Sequential(nn.Linear(8, self.hidden_dim//2),
                                     nn.LayerNorm(self.hidden_dim//2))
+
+        self.batch_norm = nn.BatchNorm1d(64, affine=True)
 
     def forward(self, input):
 
@@ -209,9 +221,14 @@ class LSTMATTN(nn.Module):
                      test_std.unsqueeze(2),
                      month_mean.unsqueeze(2)]
         embed_num = torch.cat(embed_num, 2)
+
         embed_num = self.num_proj(embed_num)
+        # embed_num = self.batch_norm(embed_num.permute(0, 2, 1))
+        embed_num = embed_num#.permute(0, 2, 1)
 
         embed = torch.cat([embed_cat, embed_num], 2)
+
+        #========= 여기까지 복사!! ==========#
 
         out, _ = self.lstm(embed)
         out = out.contiguous().view(batch_size, -1, self.hidden_dim)

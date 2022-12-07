@@ -6,7 +6,7 @@ import wandb
 import mlflow
 
 from .criterion import get_criterion
-from .dataloader import get_loaders
+from .dataloader import get_loaders, data_augmentation
 from .metric import get_metric
 from .model import LSTM, LSTMATTN, Bert
 from .lqtransformer import LQTransformer
@@ -16,6 +16,11 @@ from .scheduler import get_scheduler
 
 
 def run(args, train_data, valid_data, model):
+
+
+    train_data = data_augmentation(train_data, args)
+    valid_data = data_augmentation(valid_data, args)
+
     train_loader, valid_loader = get_loaders(args, train_data, valid_data)
 
     # only when using warmup scheduler

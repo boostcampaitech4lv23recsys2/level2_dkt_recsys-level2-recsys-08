@@ -27,6 +27,10 @@ def parse_args():
     )
 
     parser.add_argument(
+        "--window", default=False, type=bool, help="data augmentation 적용여부"
+    )
+
+    parser.add_argument(
         "--model_dir", default="models/", type=str, help="model directory"
     )
     parser.add_argument(
