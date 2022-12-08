@@ -30,8 +30,8 @@ def custom_train_test_split(df, ratio=0.7, seed=41, split=True):
     test = df[df['userID'].isin(user_ids) == False] # test
 
     #test데이터셋은, train에서 각 유저의 마지막 interaction만 추출
-    test = test[test['userID'] != test['userID'].shift(-1)]
-    return train, test
+    test2 = test[test['userID'] != test['userID'].shift(-1)]
+    return train, test, test2
 
 
 def lgbm_predict(test_df, model, FEATS, submission):

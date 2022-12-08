@@ -95,6 +95,7 @@ class Features:
         'problem_num',
         'month',
         'day',
+        # 'solvesec',
         'test_solvesec',
         'dayname',
        'hour',
