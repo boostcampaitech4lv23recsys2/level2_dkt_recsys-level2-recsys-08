@@ -12,7 +12,6 @@ tests/.cache/v/cache/lastfailed
 .vscode/settings.json
 *.wandb
 wandb/
-*.npy
 *.csv
 *.json
 *.pt
