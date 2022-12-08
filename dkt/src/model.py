@@ -40,7 +40,26 @@ class LSTM(nn.Module):
         self.embedding_test = nn.Embedding(self.args.n_test + 1, self.hidden_dim // 3)
         self.embedding_question = nn.Embedding(self.args.n_questions + 1, self.hidden_dim // 3)
         self.embedding_tag = nn.Embedding(self.args.n_tag + 1, self.hidden_dim // 3)
-
+        # big, mid, problem, month, dayname
+        self.embedding_big = nn.Embedding(self.args.n_big + 1, self.hidden_dim // 3)
+        self.embedding_mid = nn.Embedding(self.args.n_mid + 1, self.hidden_dim // 3)
+        self.embedding_problem = nn.Embedding(self.args.n_problem + 1, self.hidden_dim // 3) 
+        self.embedding_assIdx = nn.Embedding(self.args.n_assIdx + 1, self.hidden_dim // 3) 
+        self.embedding_month = nn.Embedding(self.args.n_month + 1, self.hidden_dim // 3)
+        self.embedding_day = nn.Embedding(self.args.n_day+ 1, self.hidden_dim // 3) 
+        self.embedding_hour= nn.Embedding(self.args.n_hour + 1, self.hidden_dim // 3) 
+        self.embedding_dayname = nn.Embedding(self.args.n_dayname + 1, self.hidden_dim // 3)
+        self.embedding_time_category = nn.Embedding(self.args.n_time_category + 1, self.hidden_dim // 3) 
+        self.embedding_solvecumsum_category = nn.Embedding(self.args.n_solvecumsum_category + 1, self.hidden_dim // 3) 
+        # self.embedding_user_tag_cluster = nn.Embedding(self.args.n_user_tag_cluster + 1, self.hidden_dim // 3)        
+        
+        # big, mid, problem, month, dayname
+        self.cat_proj = nn.Linear((self.hidden_dim // 3) * 13, self.hidden_dim//2) 
+        
+        # solvesec_600, test_mean, test_std, test_sum, tag_mean, tag_std, tag_sum, big_mean, big_std, big_sum
+        self.num_proj = nn.Sequential(nn.Linear(17, self.hidden_dim//2),
+                                nn.LayerNorm(self.hidden_dim//2))
+        
         # embedding combination projection
         self.comb_proj = nn.Linear((self.hidden_dim // 3) * 4, self.hidden_dim) # 원하는 차원으로 줄이기
 
@@ -86,36 +105,103 @@ class LSTM(nn.Module):
     
     def forward(self, input):
 
-        test, question, tag, _, mask, interaction = input #(test, question, tag, correct, mask, interaction)
-        # test, question, tag, _, mask, interaction, new_feature = input
+        # test, question, tag, _, mask, interaction, big, mid, problem, month, dayname, month_mean, solvesec_3600, test_mean, test_std, test_sum, tag_mean, tag_std, tag_sum, big_mean, big_std, big_sum, user_correct_answer, user_total_answer, user_acc = input #(test, question, tag, correct, mask, interaction)
+        test, question, tag, _, mask, interaction, big_category, mid_category, problem_num, assIdx, month, day, hour, dayname, time_category, solvecumsum_category,  \
+        solvesec_3600, test_mean, test_std, tag_mean, tag_std, big_mean, big_std, user_correct_answer, user_total_answer, user_acc, \
+        solvesec_cumsum,  big_category_cumconut, big_category_user_acc, big_category_user_std, big_category_answer, big_category_answer_log1p, elo_assessmentItemID = input
 
         batch_size = interaction.size(0)
 
         # Embedding
         embed_interaction = self.embedding_interaction(interaction) #interaction의 값은 0/1/2 중 하나이다.
         
-        # embed_test = self.embedding_test(test)                #shape = (64,20,21)
-        embed_test = self.lgcn_embedding('testId', test).to(device)
-        embed_test = self.lgcn_linear_test(embed_test)
+        embed_test = self.embedding_test(test)                #shape = (64,20,21)
+        embed_test_lgcn = self.lgcn_embedding('testId', test).to(device)
+        embed_test_lgcn = self.lgcn_linear_test(embed_test_lgcn)
         
-        # embed_question = self.embedding_question(question)
-        embed_question = self.lgcn_embedding('assessmentItemID', question).to(device)
-        embed_question = self.lgcn_linear(embed_question)
+        embed_question = self.embedding_question(question)
+        embed_question_lgcn = self.lgcn_embedding('assessmentItemID', question).to(device)
+        embed_question_lgcn = self.lgcn_linear(embed_question_lgcn)
         
         embed_tag = self.embedding_tag(tag)
 
-        embed = torch.cat(
+        # big, mid, problem, month, dayname
+        embed_big = self.embedding_big(big_category)
+        embed_mid = self.embedding_mid(mid_category)
+        embed_problem = self.embedding_problem(problem_num) 
+        embed_assIdx= self.embedding_assIdx(assIdx)
+        embed_month = self.embedding_month(month)
+        embed_day = self.embedding_day(day)
+        embed_hour = self.embedding_hour(hour)
+        embed_dayname = self.embedding_dayname(dayname)
+        embed_time_category = self.embedding_time_category(time_category)
+        embed_solvecumsum_category = self.embedding_solvecumsum_category(solvecumsum_category)
+        # embed_user_tag_cluster = self.embedding_user_tag_cluster(user_tag_cluster)    
+            
+        embed_cat = torch.cat(
             [
                 embed_interaction,
-                embed_test,
-                embed_question,
+                # embed_test,
+                embed_test_lgcn,
+                # embed_question,
+                embed_question_lgcn,
                 embed_tag,
+                embed_big,
+                # embed_mid,
+                embed_problem,
+                embed_assIdx,
+                embed_month,
+                embed_day,
+                embed_hour,
+                embed_dayname,
+                embed_time_category,
+                embed_solvecumsum_category,
+                # embed_user_tag_cluster
             ],
             2,
         ) #shape = (64,20,84)
 
-        X = self.comb_proj(embed) #(64,20,64)
-
+        embed_cat = self.cat_proj(embed_cat)
+        
+        ## 범주형 변수만 사용 시
+        # X = self.comb_proj(embed_cat) #(64,20,64)
+        
+        #####😘 연속형 변수 추가 시 #####
+        # 주의할 점 : cat_proj와 num_proj의 out_dim을 각각 hidden_dim//2로 하기,
+        #           137줄 embed_cat 대신 embed로 바꾸기
+        #           __init__의 self.num_proj도 수정하기
+        
+        embed_num = torch.cat(
+            [
+        #     month_mean.unsqueeze(2),
+            solvesec_3600.unsqueeze(2), #[64, 20, 1]
+            test_mean.unsqueeze(2),
+            test_std.unsqueeze(2),
+        #     test_sum.unsqueeze(2),
+            tag_mean.unsqueeze(2),
+            tag_std.unsqueeze(2),
+        #     tag_sum.unsqueeze(2),
+            big_mean.unsqueeze(2),
+            big_std.unsqueeze(2),
+        #     big_sum.unsqueeze(2),
+            user_correct_answer.unsqueeze(2),
+            user_total_answer.unsqueeze(2),
+            user_acc.unsqueeze(2),
+            solvesec_cumsum.unsqueeze(2),
+            big_category_cumconut.unsqueeze(2),
+            big_category_user_acc.unsqueeze(2),
+            big_category_user_std.unsqueeze(2),
+            big_category_answer.unsqueeze(2),
+            big_category_answer_log1p.unsqueeze(2),
+            elo_assessmentItemID.unsqueeze(2)
+            ],
+            2,
+        )
+        
+        embed_num = embed_num.type(torch.FloatTensor).to(device)
+        embed_num = self.num_proj(embed_num)
+        X = torch.cat([embed_cat, embed_num], 2)
+        
         out, _ = self.lstm(X) #hidden, cell state 반환                 #out.shape = (64,20,64)
         out = out.contiguous().view(batch_size, -1, self.hidden_dim)
         out = self.fc(out).view(batch_size, -1)                       #out.shape = (64,20)
@@ -140,9 +226,22 @@ class LSTMATTN(nn.Module):
             self.args.n_questions + 1, self.hidden_dim // 3
         )
         self.embedding_tag = nn.Embedding(self.args.n_tag + 1, self.hidden_dim // 3)
-
+        # big, mid, problem, month, dayname
+        self.embedding_big = nn.Embedding(self.args.n_big + 1, self.hidden_dim // 3)
+        self.embedding_mid = nn.Embedding(self.args.n_mid + 1, self.hidden_dim // 3)
+        self.embedding_problem = nn.Embedding(self.args.n_problem + 1, self.hidden_dim // 3)
+        self.embedding_month = nn.Embedding(self.args.n_month + 1, self.hidden_dim // 3)
+        self.embedding_dayname = nn.Embedding(self.args.n_dayname + 1, self.hidden_dim // 3)
+        
+        # big, mid, problem, month, dayname
+        self.cat_proj = nn.Linear((self.hidden_dim // 3) * 11, self.hidden_dim//2) 
+        
+        # solvesec_600, test_mean, test_std, test_sum, tag_mean, tag_std, tag_sum, big_mean, big_std, big_sum
+        self.num_proj = nn.Sequential(nn.Linear(10, self.hidden_dim//2),
+                                nn.LayerNorm(self.hidden_dim//2))
+        
         # embedding combination projection
-        self.comb_proj = nn.Linear((self.hidden_dim // 3) * 4, self.hidden_dim)
+        # self.comb_proj = nn.Linear((self.hidden_dim // 3) * 4, self.hidden_dim)
 
         self.lstm = nn.LSTM(
             self.hidden_dim, self.hidden_dim, self.n_layers, batch_first=True
@@ -199,36 +298,80 @@ class LSTMATTN(nn.Module):
         return item_embed
     
     def forward(self, input):
-
-        test, question, tag, _, mask, interaction = input
+        test, question, tag, _, mask, interaction, big, mid, problem, month, dayname, solvesec_600, test_mean, test_std, test_sum, tag_mean, tag_std, tag_sum, big_mean, big_std, big_sum = input #(test, question, tag, correct, mask, interaction)
         # test, question, tag, _, mask, interaction, new_feature = input
 
         batch_size = interaction.size(0)
 
         # Embedding
-        embed_interaction = self.embedding_interaction(interaction)
+        embed_interaction = self.embedding_interaction(interaction) #interaction의 값은 0/1/2 중 하나이다.
         
-        # embed_test = self.embedding_test(test)
-        embed_test = self.lgcn_embedding('testId', test).to(device)
-        embed_test = self.lgcn_linear_test(embed_test)
+        embed_test = self.embedding_test(test)                #shape = (64,20,21)
+        embed_test_lgcn = self.lgcn_embedding('testId', test).to(device)
+        embed_test_lgcn = self.lgcn_linear_test(embed_test_lgcn)
         
-        # embed_question = self.embedding_question(question)
-        embed_question = self.lgcn_embedding('assessmentItemID', question).to(device)
-        embed_question = self.lgcn_linear(embed_question)
+        embed_question = self.embedding_question(question)
+        embed_question_lgcn = self.lgcn_embedding('assessmentItemID', question).to(device)
+        embed_question_lgcn = self.lgcn_linear(embed_question_lgcn)
         
         embed_tag = self.embedding_tag(tag)
 
-        embed = torch.cat(
+        # big, mid, problem, month, dayname
+        embed_big = self.embedding_big(big)
+        embed_mid = self.embedding_mid(mid)
+        embed_problem = self.embedding_problem(problem)
+        embed_month = self.embedding_month(month)
+        embed_dayname = self.embedding_dayname(dayname)
+        
+        embed_cat = torch.cat(
             [
                 embed_interaction,
-                embed_test,
+                embed_test, # 209줄 같이 바꿔줘야 함
+                embed_test_lgcn,
                 embed_question,
+                embed_question_lgcn,
                 embed_tag,
+                embed_big,
+                embed_mid,
+                embed_problem,
+                embed_month,
+                embed_dayname
+            ],
+            2,
+        ) #shape = (64,20,84)
+
+        embed_cat = self.cat_proj(embed_cat)
+        
+        ## 범주형 변수만 사용 시
+        # X = self.comb_proj(embed) #(64,20,64)
+        
+        #####😘 연속형 변수 추가 시 #####
+        # 주의할 점 : cat_proj와 num_proj의 out_dim을 각각 hidden_dim//2로 하기,
+        #           137줄 embed_cat 대신 embed로 바꾸기
+        #           __init__의 self.num_proj도 수정하기
+        
+        # solvesec_600, test_mean, test_std, test_sum, tag_mean, tag_std, tag_sum, big_mean, big_std, big_sum
+        embed_num = torch.cat(
+            [
+            solvesec_600.unsqueeze(2), #[64, 20, 1]
+            test_mean.unsqueeze(2),
+            test_std.unsqueeze(2),
+            test_sum.unsqueeze(2),
+            tag_mean.unsqueeze(2),
+            tag_std.unsqueeze(2),
+            tag_sum.unsqueeze(2),
+            big_mean.unsqueeze(2),
+            big_std.unsqueeze(2),
+            big_sum.unsqueeze(2),
             ],
             2,
         )
+        
+        embed_num = embed_num.type(torch.FloatTensor).to(device)
 
-        X = self.comb_proj(embed)
+        embed_num = self.num_proj(embed_num)
+        
+        X = torch.cat([embed_cat, embed_num], 2)
 
         out, _ = self.lstm(X)
         out = out.contiguous().view(batch_size, -1, self.hidden_dim)
@@ -266,8 +409,22 @@ class Bert(nn.Module):
 
         self.embedding_tag = nn.Embedding(self.args.n_tag + 1, self.hidden_dim // 3)
 
+        # big, mid, problem, month, dayname
+        self.embedding_big = nn.Embedding(self.args.n_big + 1, self.hidden_dim // 3)
+        self.embedding_mid = nn.Embedding(self.args.n_mid + 1, self.hidden_dim // 3)
+        self.embedding_problem = nn.Embedding(self.args.n_problem + 1, self.hidden_dim // 3)
+        self.embedding_month = nn.Embedding(self.args.n_month + 1, self.hidden_dim // 3)
+        self.embedding_dayname = nn.Embedding(self.args.n_dayname + 1, self.hidden_dim // 3)
+        
+        # big, mid, problem, month, dayname
+        self.cat_proj = nn.Linear((self.hidden_dim // 3) * 9, self.hidden_dim//2) 
+        
+        # solvesec_600, test_mean, test_std, test_sum, tag_mean, tag_std, tag_sum, big_mean, big_std, big_sum
+        self.num_proj = nn.Sequential(nn.Linear(10, self.hidden_dim//2),
+                                nn.LayerNorm(self.hidden_dim//2))
+        
         # embedding combination projection
-        self.comb_proj = nn.Linear((self.hidden_dim // 3) * 4, self.hidden_dim)
+        # self.comb_proj = nn.Linear((self.hidden_dim // 3) * 21, self.hidden_dim) # 원하는 차원으로 줄이기
 
         # Bert config
         self.config = BertConfig(
@@ -321,37 +478,81 @@ class Bert(nn.Module):
         return item_embed
     
     def forward(self, input):
-        test, question, tag, _, mask, interaction = input #(test, question, tag, correct, mask, interaction)
+        test, question, tag, _, mask, interaction, big, mid, problem, month, dayname, solvesec_600, test_mean, test_std, test_sum, tag_mean, tag_std, tag_sum, big_mean, big_std, big_sum = input #(test, question, tag, correct, mask, interaction)
         # test, question, tag, _, mask, interaction, new_feature = input
 
         batch_size = interaction.size(0)
 
-        # 신나는 embedding
-
-        embed_interaction = self.embedding_interaction(interaction)
-
-        # embed_test = self.embedding_test(test)
-        embed_test = self.lgcn_embedding('testId', test).to(device)
-        embed_test = self.lgcn_linear_test(embed_test)
+        # Embedding
+        embed_interaction = self.embedding_interaction(interaction) #interaction의 값은 0/1/2 중 하나이다.
         
-        # embed_question = self.embedding_question(question)
-        embed_question = self.lgcn_embedding('assessmentItemID', question).to(device)
-        embed_question = self.lgcn_linear(embed_question)
-
+        embed_test = self.embedding_test(test)                #shape = (64,20,21)
+        embed_test_lgcn = self.lgcn_embedding('testId', test).to(device)
+        embed_test_lgcn = self.lgcn_linear_test(embed_test_lgcn)
+        
+        embed_question = self.embedding_question(question)
+        embed_question_lgcn = self.lgcn_embedding('assessmentItemID', question).to(device)
+        embed_question_lgcn = self.lgcn_linear(embed_question_lgcn)
+        
         embed_tag = self.embedding_tag(tag)
 
-        embed = torch.cat( # 여기는 Continuos 없고, 범주형만 존재
+        # big, mid, problem, month, dayname
+        embed_big = self.embedding_big(big)
+        embed_mid = self.embedding_mid(mid)
+        embed_problem = self.embedding_problem(problem)
+        embed_month = self.embedding_month(month)
+        embed_dayname = self.embedding_dayname(dayname)
+        
+        embed_cat = torch.cat(
             [
                 embed_interaction,
-                embed_test,
-                embed_question,
+                # embed_test,
+                embed_test_lgcn,
+                # embed_question,
+                embed_question_lgcn,
                 embed_tag,
+                embed_big,
+                embed_mid,
+                embed_problem,
+                embed_month,
+                embed_dayname
+            ],
+            2,
+        ) #shape = (64,20,84)
+
+        embed_cat = self.cat_proj(embed_cat)
+        
+        ## 범주형 변수만 사용 시
+        # X = self.comb_proj(embed) #(64,20,64)
+        
+        #####😘 연속형 변수 추가 시 #####
+        # 주의할 점 : cat_proj와 num_proj의 out_dim을 각각 hidden_dim//2로 하기,
+        #           137줄 embed_cat 대신 embed로 바꾸기
+        #           __init__의 self.num_proj도 수정하기
+        
+        # solvesec_600, test_mean, test_std, test_sum, tag_mean, tag_std, tag_sum, big_mean, big_std, big_sum
+        embed_num = torch.cat(
+            [
+            solvesec_600.unsqueeze(2), #[64, 20, 1]
+            test_mean.unsqueeze(2),
+            test_std.unsqueeze(2),
+            test_sum.unsqueeze(2),
+            tag_mean.unsqueeze(2),
+            tag_std.unsqueeze(2),
+            tag_sum.unsqueeze(2),
+            big_mean.unsqueeze(2),
+            big_std.unsqueeze(2),
+            big_sum.unsqueeze(2),
             ],
             2,
         )
+        
+        embed_num = embed_num.type(torch.FloatTensor).to(device)
 
-        X = self.comb_proj(embed)
-
+        embed_num = self.num_proj(embed_num)
+        
+        X = torch.cat([embed_cat, embed_num], 2)
+        
         # Bert
         encoded_layers = self.encoder(inputs_embeds=X, attention_mask=mask)
         out = encoded_layers[0] # 마지막 레이어의

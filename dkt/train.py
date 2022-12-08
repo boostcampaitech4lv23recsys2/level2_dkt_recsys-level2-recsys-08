@@ -23,6 +23,8 @@ def main(args):
     # answerCode가 -1제외 test데이터도 같이 학습
     # preprocess.load_train_test_data(args)
     # train_test_data = preprocess.get_train_test_data()
+    # train_data = train_test_data
+    
     # train_data = np.concatenate((train_data, train_test_data), axis=0)
 
     wandb.init(project="Sequential", entity = "recsys8", config=vars(args))
@@ -51,7 +53,15 @@ if __name__ == "__main__":
     run_name = "🌈(12/05 Mon)["+args.model+"] 총 피처: 3개 / lgcn 임베딩 피처 : 2개)"
 
     #🙂1. FE할 때 여기 고치세요!
-    columns = ["assessmentItemID", "testId", "KnowledgeTag"]
+    # columns = ['assessmentItemID', 'testId','KnowledgeTag', 
+    #         'big_category', 'mid_category', 'problem_num', 'month',
+    #         'dayname', 'month_mean', 'solvesec_600', 'test_mean', 'test_std', 'test_sum',
+    #         'tag_mean', 'tag_std', 'tag_sum', 'big_mean', 'big_std', 'big_sum', 'user_correct_answer', 'user_total_answer', 'user_acc']
+    columns = ["assessmentItemID", "testId", "KnowledgeTag", "big_category", "mid_category", "problem_num",
+               "assIdx", "month", "day", "hour", "dayname", "time_category", "solvecumsum_category",
+               "solvesec_3600", "test_mean", 'test_std', "tag_mean", 'tag_std', "big_mean", 'big_std',
+               "user_correct_answer", "user_total_answer", "user_acc", "solvesec_cumsum", "big_category_cumconut", "big_category_user_acc", "big_category_user_std", "big_category_answer", "big_category_answer_log1p", "elo_assessmentItemID"]
+    
     desc = '사용한 피처 :' + ', '.join(columns)
 
     with mlflow.start_run(run_id=run.info.run_id, run_name=run_name, description=desc):

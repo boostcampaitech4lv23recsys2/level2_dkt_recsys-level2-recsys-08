@@ -3,8 +3,8 @@ entity : recsys8
 project : Sequential
 # 고정
 
-method : grid # grid,random,bayes
-name : Sequential_sweep # 자유롭게 바꾸셔도 됩니다.
+method : bayes # grid,random,bayes
+name : Sequential_lstmattn_feature_sweep # 자유롭게 바꾸셔도 됩니다.
 
 metric :
   name : best_auc
@@ -13,58 +13,62 @@ metric :
 parameters :
 # 학습 파라미터
   model :
-    value : "lstm" # ['lstm', 'lstmattn', 'bert']
-  
+    value : "lstmattn" 
+    # value : ['lstm', 'lstmattn', 'bert']
   optimizer :
     value : "adam"
 
   scheduler :
     value : "plateau"
+    
 # 모델 내 파라미터
   hidden_dim :
-    value : 64
-    # values : []
+    # value : 64
+    values : [16, 32, 64, 128, 256]
 
   n_layers :
-    value : 2
-    # values : []
+  #   # value : 2
+    values : [1, 2, 3]
 
   n_heads :
-    value : 2
-    # values : []
+    # value : 2
+    values : [1, 2, 3, 4, 5, 6]
 
   drop_out :
-    value : 0.2
-    # values : []
+  #   # value : 0.2
+    values : [0.1, 0.2, 0.3, 0.4, 0.5]
+
 # 훈련 파라미터
   max_seq_len :
-    value : 20
-    # values : []
+    # value : 20
+    values : [10, 15, 20]
 
-  num_workers :
-    value : 1
-    # values : []
+  # num_workers :
+  #   value : 1
+  #   # values : []
 
   n_epochs :
-    value : 10
-    # values : []
-  
+    # value : 10
+    # values : [10, 20, 30, 40, 50, 100, 200, 300]
+    values : [10, 20, 30, 40, 50]
+
   batch_size :
-    value : 64
-    # values : []
+    # value : 64
+    values : [16, 32, 64, 128, 256]
   
   lr :
-    value : 0.0001
+    # value : 0.0001
+    min : 0.0001
+    max : 0.1
+  
+  # clip_grad :
+    # value : 10
     # values : []
   
-  clip_grad :
-    value : 10
-    # values : []
-  
-  patience : 
-     value : 5
+  # patience : 
+    #  value : 10
     #  values : []
 
-  log_steps :
-    value : 50
+  # log_steps :
+  #   value : 50
     # values : []

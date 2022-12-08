@@ -46,7 +46,8 @@ class Preprocess:
 
     def __preprocessing(self, df, args, is_train=True):
         #🙂2. FE할 때 여기 고치세요! 주의할 점 :범주형 변수에 대해서만 추가해주세요
-        cate_cols = ["assessmentItemID", "testId", "KnowledgeTag"]
+        cate_cols = ["assessmentItemID", "testId", "KnowledgeTag", "big_category", "mid_category", "problem_num",
+                     "assIdx", "month", "day", "hour", "dayname", "time_category", "solvecumsum_category"]
         if args.partial_user: #640명에 대해서 자른다.
             df = df[df['userID'] < 717]
         if not os.path.exists(self.args.asset_dir):
@@ -83,18 +84,54 @@ class Preprocess:
 
         return df
 
-    def __feature_engineering(self, df):
+    def __feature_engineering(self, df, file_name):
         
+        df1 = pd.read_pickle("/opt/ml/input/data/df1_FE.pkl")
+        df2 = pd.read_pickle("/opt/ml/input/data/df2_FE.pkl")
+        
+        if file_name == "train_data.csv":
+            return df1
+        elif file_name == "test_data.csv":
+            return df2
+        
+        # df2 = df.copy()
+        
+        # df2['big_category'] = df2.testId.map(lambda x:x[2]).astype(int)
+        # df2['mid_category'] = df2.testId.map(lambda x: int(x[-3:]))
+        # df2['problem_num'] = df2.assessmentItemID.map(lambda x: int(x[-3:]))
+        
+        # correct_t = df2.groupby(['testId'])['answerCode'].agg(['mean', 'std'])
+        # correct_t.columns = ["test_mean", "test_std"]
+        # correct_k = df2.groupby(['KnowledgeTag'])['answerCode'].agg(['mean', 'std'])
+        # correct_k.columns = ["tag_mean", 'tag_std']
+        # correct_b = df2.groupby(['big_category'])['answerCode'].agg(['mean', 'std'])
+        # correct_b.columns = ["big_mean", 'big_std']
 
+        # df2 = pd.merge(df2, correct_t, on=['testId'], how="left")
+        # df2 = pd.merge(df2, correct_k, on=['KnowledgeTag'], how="left")
+        # df2 = pd.merge(df2, correct_b, on=['big_category'], how="left")
 
-        return df
+        # df2['user_correct_answer'] = df2.groupby('userID')['answerCode'].transform(lambda x: x.cumsum().shift(1))
+        # df2['user_total_answer'] = df2.groupby('userID')['answerCode'].cumcount()
+        # df2['user_acc'] = df2['user_correct_answer']/df2['user_total_answer']
+            
+        # df2['Timestamp_start'] = pd.to_datetime(df['Timestamp'])
+        # df2['Timestamp_fin'] = df2.groupby('userID')['Timestamp_start'].shift(-1)
+        # df2['solvetime'] = df2.Timestamp_fin - df2.Timestamp_start
+        # df2['solvesec_600'] = df2.solvetime.map(lambda x : x.total_seconds()).shift(1).fillna(0)
+        # df2.loc[df2.solvesec_600>=600,'solvesec_600']=0
+        # df2.loc[df2.solvesec_600<0,'solvesec_600']=0    
+            
+        # df2.sort_values(by=['userID','Timestamp'], inplace=True)
+        
+        # return df2 
 
     def load_data_from_file(self, args, file_name, is_train=True):
         csv_file_path = os.path.join(self.args.data_dir, file_name)
         df = pd.read_csv(csv_file_path)  # , nrows=100000)
         if is_train == True:
             df = df[df['answerCode'] != -1]
-        df = self.__feature_engineering(df)
+        df = self.__feature_engineering(df, file_name)
         df = self.__preprocessing(df, args, is_train)
 
         # 추후 feature를 embedding할 시에 embedding_layer의 input 크기를 결정할때 사용
@@ -108,11 +145,54 @@ class Preprocess:
         self.args.n_tag = len(
             np.load(os.path.join(self.args.asset_dir, "KnowledgeTag_classes.npy"))
         )
-
+        
+        # 'big_category','mid_category','problem_num', 'month', 'dayname'
+        self.args.n_big = len(
+            np.load(os.path.join(self.args.asset_dir, "big_category_classes.npy"))
+        )
+        self.args.n_mid = len(
+            np.load(os.path.join(self.args.asset_dir, "mid_category_classes.npy"))
+        )
+        self.args.n_problem = len(
+            np.load(os.path.join(self.args.asset_dir, "problem_num_classes.npy"))
+        )
+        # assIdx, month, day, hour, dayname, time_category, solvecumsum_category
+        self.args.n_assIdx = len(
+            np.load(os.path.join(self.args.asset_dir, "assIdx_classes.npy"))
+        )
+        self.args.n_month = len(
+            np.load(os.path.join(self.args.asset_dir, "month_classes.npy"))
+        )
+        self.args.n_day = len(
+            np.load(os.path.join(self.args.asset_dir, "day_classes.npy"))
+        )
+        self.args.n_hour = len(
+            np.load(os.path.join(self.args.asset_dir, "hour_classes.npy"))
+        )
+        self.args.n_dayname = len(
+            np.load(os.path.join(self.args.asset_dir, "dayname_classes.npy"))
+        )
+        self.args.n_time_category = len(
+            np.load(os.path.join(self.args.asset_dir, "time_category_classes.npy"))
+        )
+        self.args.n_solvecumsum_category = len(
+            np.load(os.path.join(self.args.asset_dir, "solvecumsum_category_classes.npy"))
+        )
+        # self.args.n_user_tag_cluster = len(
+        #     np.load(os.path.join(self.args.asset_dir, "user_tag_cluster_classes.npy"))
+        # )
+        
         df = df.sort_values(by=["userID", "Timestamp"], axis=0)
         
         #🙂4. FE할 때 여기 고치세요! 주의할 점: userID와 answerCode 잊지마세요
-        columns = ["userID", "assessmentItemID", "testId", "answerCode", "KnowledgeTag"]
+        columns = ["userID", "assessmentItemID", "testId", "answerCode", "KnowledgeTag", "big_category", "mid_category", "problem_num",
+                   "assIdx", "month", "day", "hour", "dayname", "time_category", "solvecumsum_category",
+                   "solvesec_3600", "test_mean", 'test_std', "tag_mean", 'tag_std', "big_mean", 'big_std', "user_correct_answer", "user_total_answer", "user_acc",
+                   "solvesec_cumsum", "big_category_cumconut", "big_category_user_acc", "big_category_user_std", "big_category_answer", "big_category_answer_log1p", "elo_assessmentItemID"]
+        # columns = ['userID', 'assessmentItemID', 'testId', 'answerCode', 'KnowledgeTag',
+                # 'big_category', 'mid_category', 'problem_num', 'month', 'dayname',
+                # 'month_mean', 'solvesec_600', 'test_mean', 'test_std', 'test_sum',
+                # 'tag_mean', 'tag_std', 'tag_sum', 'big_mean', 'big_std', 'big_sum', 'user_correct_answer', 'user_total_answer', 'user_acc']
         # columns = ['userID', 'assessmentItemID', 'testId', 'answerCode', 'KnowledgeTag','new_feature']
         
         #🙂5. FE할 때 여기 고치세요! 주의할 점: answerCode 위치는 4번째에 적어주세요
@@ -125,6 +205,38 @@ class Preprocess:
                     r["assessmentItemID"].values,
                     r["KnowledgeTag"].values,
                     r["answerCode"].values,
+                    r["big_category"].values,
+                    r["mid_category"].values,
+                    r["problem_num"].values,
+                    r["assIdx"].values, 
+                    r["month"].values,
+                    r["day"].values,
+                    r["hour"].values,
+                    # r["month_mean"].values, 
+                    r["dayname"].values,
+                    r["time_category"].values,
+                    r["solvecumsum_category"].values,
+                    # r["user_tag_cluster"].values,
+                    r["solvesec_3600"].values,
+                    r["test_mean"].values,
+                    r["test_std"].values,
+                    # r["test_sum"].values,
+                    r["tag_mean"].values,
+                    r["tag_std"].values,
+                    # r["tag_sum"].values,
+                    r["big_mean"].values,
+                    r["big_std"].values,
+                    # r["big_sum"].values,
+                    r['user_correct_answer'].values,
+                    r['user_total_answer'].values,
+                    r['user_acc'].values, 
+                    r['solvesec_cumsum'].values,
+                    r['big_category_cumconut'].values,
+                    r['big_category_user_acc'].values,
+                    r['big_category_user_std'].values,
+                    r['big_category_answer'].values,
+                    r['big_category_answer_log1p'].values,
+                    r['elo_assessmentItemID'].values,
                     # r["new_feature"].values,
                 )
             )
@@ -153,8 +265,19 @@ class DKTDataset(torch.utils.data.Dataset):
         seq_len = len(row[0])
 
         #🙂6. FE할 때 여기 고치세요! 주의할 점: 5.과정(group) 순서 그대로 적어주세요!
-        test, question, tag, correct = row[0], row[1], row[2], row[3]
-        cols = [test, question, tag, correct]
+        test, question, tag, correct, big_category, mid_category, problem_num, \
+        assIdx, month, day, hour, dayname, time_category, solvecumsum_category, \
+        solvesec_3600, test_mean, test_std, tag_mean, tag_std, big_mean, big_std, user_correct_answer, user_total_answer, user_acc, \
+        solvesec_cumsum,  big_category_cumconut, big_category_user_acc, big_category_user_std, big_category_answer, big_category_answer_log1p, elo_assessmentItemID \
+        = row[0], row[1], row[2], row[3], row[4], row[5], row[6], row[7], row[8], row[9], row[10], row[11], row[12], row[13], row[14], row[15], row[16], row[17], row[18], row[19], row[20], row[21], row[22], row[23], row[24], row[25], row[26], row[27], row[28], row[29], row[30]
+        cols = [test, question, tag, correct, big_category, mid_category, problem_num,
+                assIdx, month, day, hour, dayname, time_category, solvecumsum_category,
+                solvesec_3600, test_mean, test_std, tag_mean, tag_std, big_mean, big_std, user_correct_answer, user_total_answer, user_acc,
+                solvesec_cumsum,  big_category_cumconut, big_category_user_acc, big_category_user_std, big_category_answer, big_category_answer_log1p, elo_assessmentItemID]
+        
+        # test, question, tag, correct, big, mid, problem, month, dayname = row[0], row[1], row[2], row[3], row[4], row[5], row[6], row[7], row[8]
+        # month_mean, solvesec_600, test_mean, test_std, test_sum, tag_mean, tag_std, tag_sum, big_mean, big_std, big_sum, user_correct_answer, user_total_answer, user_acc = row[9], row[10], row[11], row[12], row[13], row[14], row[15], row[16], row[17], row[18], row[19], row[20], row[21], row[22]
+        # cols = [test, question, tag, correct, big, mid, problem, month, dayname, month_mean, solvesec_600, test_mean, test_std, test_sum, tag_mean, tag_std, tag_sum, big_mean, big_std, big_sum, user_correct_answer, user_total_answer, user_acc]
 
         #test, question, tag, correct, new_feature = row[0], row[1], row[2], row[3], row[4]
         #cols = [test, question, tag, correct, new_feature]
