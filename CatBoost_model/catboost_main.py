@@ -4,6 +4,7 @@ import os
 import random
 import wandb
 import mlflow
+os.environ['LOGNAME'] = 'cms'
 
 import pandas as pd
 import numpy as np
@@ -26,6 +27,7 @@ except:
     experiment_id = experiment.experiment_id
 
 mlflow.pytorch.autolog()
+# mlflow.catboost.
 
 # ----------------
 
@@ -36,8 +38,8 @@ def seed_everythings(seed):
 
 def main(args):
     # MLflow ---------------
-    run_name="DKT Catboost"
-    desc="DKT Catboost w/ n features"
+    run_name="Catboost 정제된 피쳐"
+    desc="Catboost"
     # -------------------------
     with mlflow.start_run(run_name=run_name, description=desc, experiment_id=experiment_id) as run:
         # dataset
@@ -62,18 +64,13 @@ def main(args):
         mlflow.log_metric('setted iter', args.iteration)
         mlflow.log_metric('learning rate', args.lr)
         mlflow.log_metric('random seed', args.seed)
-        mlflow.log_metric('best score(valid AUC)', best_s['validation']['AUC'])
-        mlflow.log_metric('best loss(valid)', best_s['validation']['Logloss'])
+        mlflow.log_metric('best valid AUC', best_s['validation']['AUC'])
+        mlflow.log_metric('best valid loss', best_s['validation']['Logloss'])
         mlflow.log_metric('best_iter', best_iter)
         # mlflow.log_metric('feature importance', featrue_importance)
         mlflow.log_metric('used feature num', len(featrue_importance))
-        # mlflow.pytorch.log_model(model, artifact_path="model") # 모델 기록  <- TypeError: Argument 'pytorch_model' should be a torch.nn.Module
+        # mlflow.catboost.save_model(model)
      
-    # save model feature information
-    # model.save_features(dataset.features, dataset.cat_features)#, args.feature_descript)
-    # if args.save_model:
-    #     # model.save_model(args.output_dir)
-    #     torch.save(model,args.output_dir)
 
     # cmd 에서 확인하는 코드 -----------------------------------------------
     # featrue_importance = model.gat_feature_importances()
@@ -94,12 +91,12 @@ def main(args):
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
 
-    parser.add_argument("--data_dir", type=str, default="/opt/ml/input/data/ref_FE_1.pkl")
+    parser.add_argument("--data_dir", type=str, default="/opt/ml/input/data/catboost_data_3.pkl")
     parser.add_argument("--inference_dir", type=str, default="/opt/ml/input/data/sample_submission.csv")
 
     parser.add_argument("--output_dir", type=str, default="/opt/ml/input/code/CatBoost_model/catboost_output")
     parser.add_argument("--lr",type=float, default=0.01)
-    parser.add_argument("--iteration", type=int, default=100) 
+    parser.add_argument("--iteration", type=int, default=10000) 
     parser.add_argument("--early_stopping", type=int, default=100)
     parser.add_argument("--seed", type=int, default=42) # 13
     parser.add_argument("--verbose", type=int, default=100)
