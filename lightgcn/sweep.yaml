@@ -1,0 +1,52 @@
+program : train.py
+entity : recsys8
+project : lightGCN
+# 고정
+
+method : bayes # grid,random,bayes
+name : lightGCN_testId_sweep # 자유롭게 바꾸셔도 됩니다.
+
+metric :
+  name : best_auc
+  goal : maximize
+
+parameters :
+  use_cuda_if_available :
+    value : True
+  user_wandb :
+    value : True
+
+  # data
+  basepath :
+    value :  "/opt/ml/input/data/"
+  loader_verbose :
+    value : True
+
+  # dump
+  output_dir :
+    value : "./output/"
+  pred_file :
+    value : "submission.csv"
+
+  # build
+  embedding_dim :
+    # value : 128  # int
+    values : [16, 32, 64, 128, 256]
+  num_layers :
+    # value : 1  # int
+    values : [1, 2, 3]
+  weight :
+    value : "./weight/best_model.pt"
+
+  # train
+  n_epoch :
+    # value :  30
+    values : [5, 10, 15, 20, 25, 30, 50, 100, 150, 200, 250, 300]
+  learning_rate :
+    # value : 0.1
+    # values : [0.1, 0.01, 0.001] 
+    min : 0.0001
+    max : 0.1
+  weight_basepath :
+    value : "./weight"
+

@@ -1,6 +1,8 @@
 ## The .gitignore file specifies things that git should ignore. 
 ## This default template includes entries for R, Python and visual studio
 
+personal/
+
 ##
 ## Add custom entries below here.
 ##
@@ -10,11 +12,12 @@ tests/.cache/v/cache/lastfailed
 .vscode/settings.json
 *.wandb
 wandb/
-*.npy
 *.csv
 *.json
 *.pt
-
+*.tsv
+*.tfevents
+mlruns/
 
 ##
 ## R Section - See https://github.com/github/gitignore/blob/master/R.gitignore
