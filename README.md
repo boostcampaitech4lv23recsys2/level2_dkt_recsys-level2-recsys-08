@@ -95,15 +95,13 @@ DKT는 Deep Knowledge Tracing의 약자로 이번 DKT 프로젝트를 통해 저
 
 <br>
 
-
-
 <br>
 
 # 🔔 프로젝트 수행 결과
 
 - [EDA](https://github.com/boostcampaitech4lv23recsys2/level2_dkt_recsys-level2-recsys-08/tree/master/EDA)
 
-- [Model]()
+- [Model](https://github.com/boostcampaitech4lv23recsys2/level2_dkt_recsys-level2-recsys-08/tree/master/model)
 
 - [MLFlow](https://github.com/boostcampaitech4lv23recsys2/level2_dkt_recsys-level2-recsys-08/tree/master/MLflow)
 
