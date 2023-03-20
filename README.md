@@ -146,6 +146,6 @@ LGBM+CatBoost, LGBM, XGBM, TabNet, LSTM, LGCN (가중치 : 40 - 30 - 15 - 5 - 5 
 
 # 📔 프로젝트 결과물
 
-* [Wrap-Up Report](https://github.com/boostcampaitech4lv23recsys2/level3_productserving-level3-recsys-08/blob/master/Wrap_Up_Report.pdf)<br><br>
+* [Wrap-Up Report](https://github.com/boostcampaitech4lv23recsys2/level2_dkt_recsys-level2-recsys-08/blob/master/RecSys_DKT_Wrap_UP_%E1%84%85%E1%85%B5%E1%84%91%E1%85%A9%E1%84%90%E1%85%B3.pdf)<br><br>
 
 <br>
