@@ -113,8 +113,7 @@ DKT는 Deep Knowledge Tracing의 약자로 이번 DKT 프로젝트를 통해 저
 
 | Model | Details | AUROC (제출) | Accuracy (제출) |
 | --- | --- | --- | --- |
-| SAKT | userID, assessmentItemID, answerCode 만 사용, 
-Output에 sigmoid 적용 | 0.6425 | 0.6075 |
+| SAKT | userID, assessmentItemID, answerCode 만 사용, Output에 sigmoid 적용 | 0.6425 | 0.6075 |
 | CatBoost | 21개 피쳐 사용, learning rate = 0.01, iteration = 10000 | 0.8456 | 0.7769 |
 | TabNet | Sweep, Feature Selection | 0.8160 | 0.6989 |
 | LSTM | 16개 피처 사용, 연속형변수 batchnorm, data augmentation | 0.7828 | 0.7124 |
