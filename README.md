@@ -19,7 +19,7 @@
 
 # 🏆️ 프로젝트 개요
     
-    DKT는 Deep Knowledge Tracing의 약자로 이번 DKT 프로젝트를 통해 저희는 "지식 상태"를 추적하는 딥러닝 방법론을 사용하여 학생의 이해도를 측정하고 미래 학습 예측을 목표로 하였습니다.
+DKT는 Deep Knowledge Tracing의 약자로 이번 DKT 프로젝트를 통해 저희는 "지식 상태"를 추적하는 딥러닝 방법론을 사용하여 학생의 이해도를 측정하고 미래 학습 예측을 목표로 하였습니다.
     
    ![dkt_image](https://user-images.githubusercontent.com/79351899/226337521-3f6c1286-bb43-4ed5-a2cd-eb29f45bcc66.png)
     
